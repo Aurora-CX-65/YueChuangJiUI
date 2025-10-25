@@ -392,5 +392,379 @@ export const createValidationRules = {
   })
 };
 
+/**
+ * 管理员专用验证函数
+ */
+
+/**
+ * 用户状态验证
+ * @param {string} status - 用户状态
+ * @returns {Object} 验证结果
+ */
+export const validateUserStatus = (status) => {
+  const validStatuses = ['ACTIVE', 'SUSPENDED', 'BANNED', 'DELETED'];
+  
+  if (!status || typeof status !== 'string') {
+    return {
+      isValid: false,
+      errors: ['用户状态不能为空']
+    };
+  }
+  
+  const upperStatus = status.toUpperCase();
+  const isValid = validStatuses.includes(upperStatus);
+  
+  return {
+    isValid,
+    errors: isValid ? [] : ['无效的用户状态，必须是：ACTIVE、SUSPENDED、BANNED、DELETED 之一']
+  };
+};
+
+/**
+ * 用户角色验证
+ * @param {string} role - 用户角色
+ * @returns {Object} 验证结果
+ */
+export const validateUserRole = (role) => {
+  const validRoles = ['USER', 'AUTHOR', 'ADMIN', 'SUPER_ADMIN'];
+  
+  if (!role || typeof role !== 'string') {
+    return {
+      isValid: false,
+      errors: ['用户角色不能为空']
+    };
+  }
+  
+  const upperRole = role.toUpperCase();
+  const isValid = validRoles.includes(upperRole);
+  
+  return {
+    isValid,
+    errors: isValid ? [] : ['无效的用户角色，必须是：USER、AUTHOR、ADMIN、SUPER_ADMIN 之一']
+  };
+};
+
+/**
+ * 封禁时间验证
+ * @param {string|Date} until - 封禁结束时间
+ * @returns {Object} 验证结果
+ */
+export const validateSuspendDuration = (until) => {
+  if (!until) {
+    return {
+      isValid: false,
+      errors: ['封禁结束时间不能为空']
+    };
+  }
+  
+  const now = new Date();
+  const suspendUntil = new Date(until);
+  
+  if (isNaN(suspendUntil.getTime())) {
+    return {
+      isValid: false,
+      errors: ['封禁结束时间格式无效']
+    };
+  }
+  
+  if (suspendUntil <= now) {
+    return {
+      isValid: false,
+      errors: ['封禁结束时间必须晚于当前时间']
+    };
+  }
+  
+  // 最长封禁时间为1年
+  const maxDuration = 365 * 24 * 60 * 60 * 1000;
+  if (suspendUntil.getTime() - now.getTime() > maxDuration) {
+    return {
+      isValid: false,
+      errors: ['封禁时间不能超过1年']
+    };
+  }
+  
+  return {
+    isValid: true,
+    errors: []
+  };
+};
+
+/**
+ * 标签名称验证（管理员级别）
+ * @param {string} name - 标签名称
+ * @param {Object} options - 验证选项
+ * @returns {Object} 验证结果
+ */
+export const validateAdminTagName = (name, options = {}) => {
+  const { 
+    minLength = 1, 
+    maxLength = 20, 
+    allowSpecialChars = false,
+    existingNames = []
+  } = options;
+  
+  if (!name || typeof name !== 'string') {
+    return {
+      isValid: false,
+      errors: ['标签名称不能为空']
+    };
+  }
+  
+  const errors = [];
+  const trimmedName = name.trim();
+  
+  // 长度验证
+  if (trimmedName.length < minLength) {
+    errors.push(`标签名称长度不能少于${minLength}位`);
+  }
+  if (trimmedName.length > maxLength) {
+    errors.push(`标签名称长度不能超过${maxLength}位`);
+  }
+  
+  // 字符验证
+  if (!allowSpecialChars) {
+    const validCharsRegex = /^[\u4e00-\u9fa5a-zA-Z0-9_\-\s]+$/;
+    if (!validCharsRegex.test(trimmedName)) {
+      errors.push('标签名称只能包含中文、英文、数字、下划线、连字符和空格');
+    }
+  }
+  
+  // 重复性验证
+  if (existingNames.includes(trimmedName)) {
+    errors.push('标签名称已存在');
+  }
+  
+  // 不能全是空格或特殊字符
+  if (!/[\u4e00-\u9fa5a-zA-Z0-9]/.test(trimmedName)) {
+    errors.push('标签名称必须包含至少一个中文、英文或数字字符');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * 分类名称验证（管理员级别）
+ * @param {string} name - 分类名称
+ * @param {Object} options - 验证选项
+ * @returns {Object} 验证结果
+ */
+export const validateAdminCategoryName = (name, options = {}) => {
+  const { 
+    minLength = 1, 
+    maxLength = 50, 
+    allowSpecialChars = false,
+    existingNames = [],
+    parentId = null
+  } = options;
+  
+  if (!name || typeof name !== 'string') {
+    return {
+      isValid: false,
+      errors: ['分类名称不能为空']
+    };
+  }
+  
+  const errors = [];
+  const trimmedName = name.trim();
+  
+  // 长度验证
+  if (trimmedName.length < minLength) {
+    errors.push(`分类名称长度不能少于${minLength}位`);
+  }
+  if (trimmedName.length > maxLength) {
+    errors.push(`分类名称长度不能超过${maxLength}位`);
+  }
+  
+  // 字符验证
+  if (!allowSpecialChars) {
+    const validCharsRegex = /^[\u4e00-\u9fa5a-zA-Z0-9_\-\s\/]+$/;
+    if (!validCharsRegex.test(trimmedName)) {
+      errors.push('分类名称只能包含中文、英文、数字、下划线、连字符、空格和斜杠');
+    }
+  }
+  
+  // 重复性验证（同级分类下不能重复）
+  const duplicateKey = parentId ? `${parentId}_${trimmedName}` : trimmedName;
+  if (existingNames.includes(duplicateKey)) {
+    errors.push('同级分类下已存在相同名称的分类');
+  }
+  
+  // 不能全是空格或特殊字符
+  if (!/[\u4e00-\u9fa5a-zA-Z0-9]/.test(trimmedName)) {
+    errors.push('分类名称必须包含至少一个中文、英文或数字字符');
+  }
+  
+  // 不能以斜杠开头或结尾
+  if (trimmedName.startsWith('/') || trimmedName.endsWith('/')) {
+    errors.push('分类名称不能以斜杠开头或结尾');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * 封禁原因验证
+ * @param {string} reason - 封禁原因
+ * @returns {Object} 验证结果
+ */
+export const validateBanReason = (reason) => {
+  if (!reason || typeof reason !== 'string') {
+    return {
+      isValid: false,
+      errors: ['封禁原因不能为空']
+    };
+  }
+  
+  const errors = [];
+  const trimmedReason = reason.trim();
+  
+  if (trimmedReason.length < 5) {
+    errors.push('封禁原因不能少于5个字符');
+  }
+  
+  if (trimmedReason.length > 500) {
+    errors.push('封禁原因不能超过500个字符');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * 管理员操作权限验证
+ * @param {Object} currentUser - 当前用户
+ * @param {Object} targetUser - 目标用户
+ * @param {string} operation - 操作类型
+ * @returns {Object} 验证结果
+ */
+export const validateAdminOperation = (currentUser, targetUser, operation) => {
+  if (!currentUser || !currentUser.role) {
+    return {
+      isValid: false,
+      errors: ['当前用户信息无效']
+    };
+  }
+  
+  if (!targetUser || !targetUser.id) {
+    return {
+      isValid: false,
+      errors: ['目标用户信息无效']
+    };
+  }
+  
+  const errors = [];
+  
+  // 检查是否为管理员
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+    errors.push('权限不足，需要管理员权限');
+  }
+  
+  // 不能操作自己
+  if (currentUser.id === targetUser.id) {
+    errors.push('不能对自己执行此操作');
+  }
+  
+  // 普通管理员不能操作其他管理员
+  if (currentUser.role === 'ADMIN' && ['ADMIN', 'SUPER_ADMIN'].includes(targetUser.role)) {
+    errors.push('权限不足，不能操作其他管理员');
+  }
+  
+  // 特定操作的权限检查
+  const restrictedOperations = ['DELETE', 'BAN', 'CHANGE_ROLE'];
+  if (restrictedOperations.includes(operation) && currentUser.role !== 'SUPER_ADMIN') {
+    if (targetUser.role === 'ADMIN') {
+      errors.push('权限不足，只有超级管理员才能执行此操作');
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * 批量操作验证
+ * @param {Array} items - 操作项目列表
+ * @param {number} maxBatchSize - 最大批量操作数量
+ * @returns {Object} 验证结果
+ */
+export const validateBatchOperation = (items, maxBatchSize = 100) => {
+  if (!Array.isArray(items)) {
+    return {
+      isValid: false,
+      errors: ['操作项目必须是数组']
+    };
+  }
+  
+  const errors = [];
+  
+  if (items.length === 0) {
+    errors.push('操作项目不能为空');
+  }
+  
+  if (items.length > maxBatchSize) {
+    errors.push(`批量操作数量不能超过${maxBatchSize}项`);
+  }
+  
+  // 检查是否有重复项
+  const uniqueIds = new Set(items.map(item => item.id || item));
+  if (uniqueIds.size !== items.length) {
+    errors.push('操作项目中存在重复项');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+/**
+ * 创建管理员验证规则
+ */
+export const createAdminValidationRules = {
+  userStatus: () => ({
+    validator: validateUserStatus
+  }),
+  
+  userRole: () => ({
+    validator: validateUserRole
+  }),
+  
+  suspendDuration: () => ({
+    validator: validateSuspendDuration
+  }),
+  
+  adminTagName: (options) => ({
+    validator: validateAdminTagName,
+    options
+  }),
+  
+  adminCategoryName: (options) => ({
+    validator: validateAdminCategoryName,
+    options
+  }),
+  
+  banReason: () => ({
+    validator: validateBanReason
+  }),
+  
+  adminOperation: (currentUser, operation) => ({
+    validator: (targetUser) => validateAdminOperation(currentUser, targetUser, operation)
+  }),
+  
+  batchOperation: (maxBatchSize) => ({
+    validator: (items) => validateBatchOperation(items, maxBatchSize)
+  })
+};
+
 // 导出默认验证器实例
 export const defaultValidator = new FormValidator();

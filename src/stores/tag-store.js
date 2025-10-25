@@ -18,6 +18,9 @@ export const useTagStore = defineStore('tag', {
     // 所有标签列表
     tags: [],
     
+    // 管理员标签列表（包含更多详细信息）
+    adminTags: [],
+    
     // 标签统计信息
     tagStats: {},
     
@@ -334,6 +337,105 @@ export const useTagStore = defineStore('tag', {
       }
     },
 
+    // === 管理员功能扩展 ===
+
+    /**
+     * 获取管理员标签列表
+     * @param {Object} params - 查询参数
+     */
+    async fetchAdminTags(params = {}) {
+      try {
+        this.startLoading()
+        
+        const response = await TagService.getAdminTags(params)
+        
+        if (response) {
+          // 管理员标签列表可能包含更多详细信息
+          this.adminTags = response.records || response.data || []
+          
+          // 同时更新普通标签列表
+          if (this.adminTags.length > 0) {
+            this.tags = this.adminTags
+          }
+        }
+        
+        this.stopLoading()
+        
+        return response
+      } catch (error) {
+        this.handleError(error, '获取管理员标签列表')
+        throw error
+      }
+    },
+
+    /**
+     * 获取标签使用统计
+     * @param {number} tagId - 标签ID
+     */
+    async fetchTagStatsById(tagId) {
+      try {
+        const stats = await TagService.getTagStats(tagId)
+        
+        if (stats) {
+          // 更新标签统计信息
+          this.updateTagStats(tagId, stats)
+        }
+        
+        return stats
+      } catch (error) {
+        console.warn('获取标签统计失败:', error)
+        return null
+      }
+    },
+
+    /**
+     * 批量删除标签（管理员功能）
+     * @param {Array<number>} tagIds - 标签ID列表
+     */
+    async batchDeleteTags(tagIds) {
+      try {
+        this.startLoading()
+        
+        const result = await TagService.batchDeleteTags(tagIds)
+        
+        if (result) {
+          // 从列表中移除删除的标签
+          this.tags = this.tags.filter(t => !tagIds.includes(t.id))
+          this.popularTags = this.popularTags.filter(t => !tagIds.includes(t.id))
+          
+          // 移除统计信息
+          tagIds.forEach(tagId => {
+            delete this.tagStats[tagId]
+          })
+          
+          if (window.notificationManager) {
+            window.notificationManager.success(`批量删除 ${tagIds.length} 个标签成功`)
+          }
+        }
+        
+        this.stopLoading()
+        
+        return result
+      } catch (error) {
+        this.handleError(error, '批量删除标签')
+        throw error
+      }
+    },
+
+    /**
+     * 验证标签名称唯一性
+     * @param {string} name - 标签名称
+     * @param {number} [excludeId] - 排除的标签ID
+     */
+    async validateTagName(name, excludeId = null) {
+      try {
+        return await TagService.validateTagName(name, excludeId)
+      } catch (error) {
+        console.warn('验证标签名称失败:', error)
+        return false
+      }
+    },
+
     /**
      * 初始化标签数据
      */
@@ -353,6 +455,7 @@ export const useTagStore = defineStore('tag', {
   // 持久化配置 - 缓存标签数据
   persist: createPersistConfig('tag', [
     'tags',
+    'adminTags',
     'popularTags',
     'tagStats'
   ])

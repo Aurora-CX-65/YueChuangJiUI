@@ -57,6 +57,9 @@ export * from './file-types.js'
 export * from './request-types.js'
 export * from './type-validators.js'
 
+// 管理员功能类型
+export * from './admin/index.js'
+
 /**
  * HTTP请求方法枚举
  */
@@ -144,4 +147,33 @@ export const NOTIFICATION_TYPES = {
 export const TAG_STATUS = {
     ACTIVE: 'active',
     INACTIVE: 'inactive'
+}
+
+/**
+ * 管理员操作类型枚举
+ */
+export const ADMIN_OPERATION_TYPES = {
+    USER_STATUS_UPDATE: 'user_status_update',
+    USER_ROLE_UPDATE: 'user_role_update',
+    USER_BAN: 'user_ban',
+    USER_UNBAN: 'user_unban',
+    USER_SUSPEND: 'user_suspend',
+    PASSWORD_RESET: 'password_reset',
+    TAG_CREATE: 'tag_create',
+    TAG_UPDATE: 'tag_update',
+    TAG_DELETE: 'tag_delete',
+    CATEGORY_CREATE: 'category_create',
+    CATEGORY_UPDATE: 'category_update',
+    CATEGORY_DELETE: 'category_delete',
+    SYSTEM_SETTINGS_UPDATE: 'system_settings_update'
+}
+
+/**
+ * 管理员权限级别枚举
+ */
+export const ADMIN_PERMISSION_LEVELS = {
+    USER_MANAGEMENT: 'user_management',
+    CONTENT_MANAGEMENT: 'content_management',
+    SYSTEM_MANAGEMENT: 'system_management',
+    FULL_ACCESS: 'full_access'
 }

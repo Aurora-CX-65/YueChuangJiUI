@@ -15,8 +15,15 @@ import { AiService } from './ai-service.js'
 import { FileService } from './file-service.js'
 import { NotificationService } from './notification-service.js'
 
+// 导入管理员服务类
+import { AdminUserService } from './admin/admin-user-service.js'
+import { AdminSystemService } from './admin/admin-system-service.js'
+
 // 重新导出所有服务类
 export { AuthService, UserService, BookService, ChapterService, CommentService, CategoryService, TagService, AiService, FileService, NotificationService }
+
+// 重新导出管理员服务类
+export { AdminUserService, AdminSystemService }
 
 /**
  * 所有API服务的集合对象
@@ -32,7 +39,10 @@ const apiServices = {
     tag: TagService,
     ai: AiService,
     file: FileService,
-    notification: NotificationService
+    notification: NotificationService,
+    // 管理员服务
+    adminUser: AdminUserService,
+    adminSystem: AdminSystemService
 }
 
 // 命名导出API服务集合

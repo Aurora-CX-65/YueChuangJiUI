@@ -30,3 +30,7 @@ export { useTagStore } from './tag-store.js'
 
 // 导出AI功能相关store
 export { useAIStore } from './ai-store.js'
+
+// 导出管理员功能相关store
+export { useAdminUserStore } from './admin/admin-user-store.js'
+export { useAdminSystemStore } from './admin/admin-system-store.js'

@@ -17,6 +17,9 @@ export * from './performance.js';
 export * from './file-utils.js';
 export * from './url-utils.js';
 
+// 管理员工具
+export * from './admin/admin-permission-checker.js';
+
 // 现有工具 - 导出类和实例
 export { 
   HttpClient, 
@@ -41,13 +44,15 @@ import * as formatters from './formatters.js';
 import * as performance from './performance.js';
 import * as fileUtils from './file-utils.js';
 import * as urlUtils from './url-utils.js';
+import * as adminPermissions from './admin/admin-permission-checker.js';
 
 export const utils = {
   validators,
   formatters,
   performance,
   fileUtils,
-  urlUtils
+  urlUtils,
+  adminPermissions
 };
 
 /**
@@ -122,3 +127,16 @@ export {
   deepLinkManager,
   stateSyncManager
 } from './url-utils.js';
+
+export {
+  // 管理员权限检查
+  AdminPermissionChecker,
+  hasPermission,
+  isAdmin,
+  isSuperAdmin,
+  canOperateUser,
+  PERMISSIONS,
+  ROLES,
+  defaultPermissionChecker,
+  createPermissionChecker
+} from './admin/admin-permission-checker.js';

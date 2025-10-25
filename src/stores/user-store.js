@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import { AuthService } from '@/services/auth-service.js'
 import { UserService } from '@/services/user-service.js'
 import { TokenManager } from '@/utils/token-manager.js'
+import { AdminPermissionChecker } from '@/utils/admin/admin-permission-checker.js'
 import { 
   createPersistConfig, 
   createLoadingState, 
@@ -67,7 +68,10 @@ export const useUserStore = defineStore('user', {
     },
     
     // 全局加载状态
-    ...createLoadingState()
+    ...createLoadingState(),
+    
+    // 权限检查器实例
+    permissionChecker: null
   }),
 
   getters: {
@@ -94,7 +98,18 @@ export const useUserStore = defineStore('user', {
     /**
      * 是否为管理员
      */
-    isAdmin: (state) => state.currentUser?.role === 'admin',
+    isAdmin: (state) => {
+      if (!state.currentUser?.role) return false;
+      return ['ADMIN', 'SUPER_ADMIN'].includes(state.currentUser.role.toUpperCase());
+    },
+    
+    /**
+     * 是否为超级管理员
+     */
+    isSuperAdmin: (state) => {
+      if (!state.currentUser?.role) return false;
+      return state.currentUser.role.toUpperCase() === 'SUPER_ADMIN';
+    },
     
     /**
      * 用户头像URL
@@ -129,7 +144,17 @@ export const useUserStore = defineStore('user', {
     /**
      * 是否可以申请作者
      */
-    canApplyAuthor: (state) => state.authorApplication.canApply && !state.isAuthor
+    canApplyAuthor: (state) => state.authorApplication.canApply && !state.isAuthor,
+    
+    /**
+     * 获取权限检查器实例
+     */
+    getPermissionChecker: (state) => {
+      if (!state.permissionChecker && state.currentUser) {
+        state.permissionChecker = new AdminPermissionChecker(state.currentUser);
+      }
+      return state.permissionChecker;
+    }
   },
 
   actions: {
@@ -161,6 +186,9 @@ export const useUserStore = defineStore('user', {
           // 设置用户信息
           this.currentUser = response.user
           this.isAuthenticated = true
+          
+          // 初始化权限检查器
+          this.permissionChecker = new AdminPermissionChecker(response.user)
           
           // 获取用户统计信息
           if (response.user?.id) {
@@ -245,6 +273,7 @@ export const useUserStore = defineStore('user', {
       this.searchResults.items = []
       this.authorApplication.applications = []
       this.authorApplication.latestApplication = null
+      this.permissionChecker = null
       
       // 清除令牌
       TokenManager.removeToken()
@@ -263,6 +292,9 @@ export const useUserStore = defineStore('user', {
         if (user) {
           this.currentUser = user
           this.isAuthenticated = true
+          
+          // 初始化权限检查器
+          this.permissionChecker = new AdminPermissionChecker(user)
           
           // 获取用户统计信息
           await this.fetchUserStats(user.id)
@@ -290,6 +322,11 @@ export const useUserStore = defineStore('user', {
         
         if (updatedUser) {
           this.currentUser = { ...this.currentUser, ...updatedUser }
+          
+          // 更新权限检查器
+          if (this.permissionChecker) {
+            this.permissionChecker.setCurrentUser(this.currentUser)
+          }
         }
         
         this.stopLoading()
@@ -711,6 +748,86 @@ export const useUserStore = defineStore('user', {
         this.authorApplication.pagination.total = paginationData.total || 0
         this.authorApplication.pagination.pages = Math.ceil(this.authorApplication.pagination.total / this.authorApplication.pagination.size)
       }
+    },
+
+    /**
+     * 权限检查相关方法
+     */
+    
+    /**
+     * 检查操作权限
+     * @param {string} operation - 操作类型
+     * @returns {Object} 权限检查结果
+     */
+    checkPermission(operation) {
+      if (!this.permissionChecker) {
+        return {
+          hasPermission: false,
+          reason: '权限检查器未初始化'
+        };
+      }
+      return this.permissionChecker.checkPermission(operation);
+    },
+    
+    /**
+     * 检查是否可以操作目标用户
+     * @param {Object} targetUser - 目标用户
+     * @param {string} operation - 操作类型
+     * @returns {Object} 权限检查结果
+     */
+    canOperateUser(targetUser, operation) {
+      if (!this.permissionChecker) {
+        return {
+          hasPermission: false,
+          reason: '权限检查器未初始化'
+        };
+      }
+      return this.permissionChecker.canOperateUser(targetUser, operation);
+    },
+    
+    /**
+     * 批量权限检查
+     * @param {Array} operations - 操作列表
+     * @returns {Object} 批量权限检查结果
+     */
+    checkMultiplePermissions(operations) {
+      if (!this.permissionChecker) {
+        return {
+          results: {},
+          hasAllPermissions: false,
+          allowedOperations: [],
+          deniedOperations: operations
+        };
+      }
+      return this.permissionChecker.checkMultiplePermissions(operations);
+    },
+    
+    /**
+     * 获取用户可执行的操作列表
+     * @returns {Array} 可执行的操作列表
+     */
+    getAllowedOperations() {
+      if (!this.permissionChecker) {
+        return [];
+      }
+      return this.permissionChecker.getAllowedOperations();
+    },
+    
+    /**
+     * 检查资源访问权限
+     * @param {string} resourceType - 资源类型
+     * @param {string} action - 操作动作
+     * @param {Object} resource - 资源对象
+     * @returns {Object} 权限检查结果
+     */
+    checkResourcePermission(resourceType, action, resource = null) {
+      if (!this.permissionChecker) {
+        return {
+          hasPermission: false,
+          reason: '权限检查器未初始化'
+        };
+      }
+      return this.permissionChecker.checkResourcePermission(resourceType, action, resource);
     }
   },
 
