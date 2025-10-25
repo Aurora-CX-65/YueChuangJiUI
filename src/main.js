@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import App from './App.vue'
+import router from './router'
+import './styles/global.css'
 
 // 导入错误处理相关模块
 import { ErrorHandler } from './utils/error-handler.js'
@@ -33,6 +35,9 @@ pinia.use(piniaPluginPersistedstate)
 
 // 注册Pinia
 app.use(pinia)
+
+// 注册路由
+app.use(router)
 
 // 设置全局错误处理器
 ErrorHandler.setupGlobalErrorHandler()

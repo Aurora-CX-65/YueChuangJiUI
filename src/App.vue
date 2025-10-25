@@ -1,11 +1,29 @@
-<script setup></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div id="app">
+    <Navbar />
+    <main class="content">
+      <router-view />
+    </main>
+    <Footer />
+  </div>
 </template>
 
-<style scoped></style>
+<script>
+import Navbar from './components/Navbar.vue'
+import Footer from './components/Footer.vue'
+
+export default {
+  name: 'App',
+  components: {
+    Navbar,
+    Footer
+  }
+}
+</script>
+
+<style>
+.content {
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  padding-top: var(--header-height);
+}
+</style>

@@ -1,0 +1,15 @@
+<svg width="60" height="60" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFB6C1"/>
+            <stop offset="100%" stop-color="#FF69B4"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Circle background -->
+    <circle cx="50" cy="50" r="45" fill="url(#logo-gradient)"/>
+    
+    <!-- Stylized 'Y' and 'C' for YueChuang -->
+    <path d="M30 25 L50 50 L70 25" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M50 50 L50 75" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+</svg>

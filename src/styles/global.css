@@ -1,0 +1,18 @@
+:root {
+  --primary-gradient: linear-gradient(to right, #FFB6C1, #FF69B4);
+  --background-gradient: linear-gradient(to bottom, #FFF0F5, #FFFFFF);
+  --accent-color: #DA70D6;
+  --text-color: #333;
+  --header-height: 60px;
+  --footer-height: 50px;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--background-gradient);
+}
