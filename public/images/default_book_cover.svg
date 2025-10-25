@@ -64,22 +64,9 @@
   <!-- 文字内容 -->
   <g font-family="Arial, sans-serif" text-anchor="middle" fill="#ffffff">
     <!-- 书籍标题 -->
-    <text x="222" y="280" font-size="28" font-weight="bold">书籍标题</text>
+    <text x="222" y="280" font-size="28" font-weight="bold">暂无封面</text>
     
     <!-- 副标题 -->
-    <text x="222" y="320" font-size="16" font-weight="normal">副标题或系列名称</text>
-    
-    <!-- 作者姓名 -->
-    <text x="222" y="360" font-size="18" font-weight="normal">作者姓名</text>
-    
-    <!-- 分割线 -->
-    <line x1="172" y1="390" x2="272" y2="390" stroke="#ffffff" stroke-width="1" stroke-opacity="0.7" />
-    
-    <!-- 出版社名称 -->
-    <text x="222" y="420" font-size="14" font-weight="normal">出版社名称</text>
+    <text x="222" y="320" font-size="16" font-weight="normal">这是一个默认的书籍封面</text>
   </g>
-  
-  <!-- 底部水印 -->
-  <text x="420" y="620" font-family="Arial, sans-serif" font-size="10" 
-        text-anchor="end" fill="#ffffff" fill-opacity="0.5">豆包AI生成</text>
 </svg>
