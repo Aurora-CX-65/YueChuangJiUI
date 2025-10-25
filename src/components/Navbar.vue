@@ -12,19 +12,110 @@
     <div class="navbar-right">
       <div class="search-bar">
         <input type="text" placeholder="搜索..." />
-        <button>搜索</button>
+        <button>
+          <el-icon><Search /></el-icon>
+        </button>
       </div>
-      <div class="user-info">
-        <router-link to="/login">登录</router-link>
-        <router-link to="/register">注册</router-link>
+      
+      <!-- 未登录状态：显示登录按钮 -->
+      <div v-if="!userStore.isLoggedIn" class="auth-buttons">
+        <router-link to="/auth/login" class="auth-link">登录</router-link>
+      </div>
+      
+      <!-- 已登录状态：显示用户信息 -->
+      <div v-else class="user-info" @click="toggleDropdown" ref="userInfoRef">
+        <img :src="userStore.userAvatar" :alt="userStore.userNickname" class="user-avatar" />
+        <span class="user-name">{{ userStore.userNickname }}</span>
+        <el-icon class="dropdown-icon" :class="{ 'rotated': showDropdown }">
+          <ArrowDown />
+        </el-icon>
+        
+        <!-- 用户下拉菜单 -->
+        <div v-if="showDropdown" class="user-dropdown">
+          <div class="dropdown-item" @click="goToProfile">
+            <el-icon class="icon"><User /></el-icon>
+            <span>个人中心</span>
+          </div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item logout-item" @click="handleLogout">
+            <el-icon class="icon"><SwitchButton /></el-icon>
+            <span>退出登录</span>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 </template>
 
 <script>
+import { useUserStore } from '@/stores/user-store.js'
+import { Search, ArrowDown, User, SwitchButton } from '@element-plus/icons-vue'
+
 export default {
-  name: 'Navbar'
+  name: 'Navbar',
+  components: {
+    Search,
+    ArrowDown,
+    User,
+    SwitchButton
+  },
+  data() {
+    return {
+      showDropdown: false
+    }
+  },
+  setup() {
+    const userStore = useUserStore()
+    return {
+      userStore
+    }
+  },
+  mounted() {
+    // 点击外部关闭下拉菜单
+    document.addEventListener('click', this.handleClickOutside)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutside)
+  },
+  methods: {
+    /**
+     * 切换下拉菜单显示状态
+     */
+    toggleDropdown() {
+      this.showDropdown = !this.showDropdown
+    },
+    
+    /**
+     * 处理点击外部区域
+     */
+    handleClickOutside(event) {
+      if (this.$refs.userInfoRef && !this.$refs.userInfoRef.contains(event.target)) {
+        this.showDropdown = false
+      }
+    },
+    
+    /**
+     * 跳转到个人中心
+     */
+    goToProfile() {
+      this.showDropdown = false
+      this.$router.push('/profile')
+    },
+    
+    /**
+     * 处理退出登录
+     */
+    async handleLogout() {
+      this.showDropdown = false
+      try {
+        await this.userStore.logout()
+        // 跳转到首页
+        this.$router.push('/')
+      } catch (error) {
+        console.error('退出登录失败:', error)
+      }
+    }
+  }
 }
 </script>
 
@@ -37,9 +128,11 @@ export default {
   padding: 0 20px;
   background: var(--primary-gradient);
   color: white;
+  position: relative;
+  z-index: 1000;
 }
 
-.navbar-left, .navbar-right, .nav-links, .user-info {
+.navbar-left, .navbar-right, .nav-links, .auth-buttons {
   display: flex;
   align-items: center;
 }
@@ -55,19 +148,20 @@ export default {
   margin-right: 20px;
 }
 
-.nav-links a, .user-info a {
+.nav-links a {
   color: white;
   text-decoration: none;
   margin: 0 10px;
   transition: color 0.3s;
 }
 
-.nav-links a:hover, .user-info a:hover {
+.nav-links a:hover {
   color: var(--accent-color);
 }
 
 .search-bar {
   display: flex;
+  margin-right: 15px;
 }
 
 .search-bar input {
@@ -78,10 +172,150 @@ export default {
 
 .search-bar button {
   border: none;
-  padding: 5px 10px;
+  padding: 8px 12px;
   background-color: var(--accent-color);
   color: white;
   border-radius: 0 3px 3px 0;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-bar button:hover {
+  background-color: var(--accent-color-dark, #409eff);
+}
+
+/* 认证按钮样式 */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-link {
+  color: white;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.auth-link:hover {
+  color: var(--accent-color);
+}
+
+/* 用户信息样式 */
+.user-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+  position: relative;
+}
+
+.user-info:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 6px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-icon {
+  font-size: 10px;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单样式 */
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  overflow: hidden;
+  z-index: 1001;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdown-item .icon {
+  margin-right: 8px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  color: #666;
+}
+
+.logout-item .icon {
+  color: #d32f2f;
+}
+
+.dropdown-item span {
+  font-size: 14px;
+}
+
+.logout-item:hover {
+  background-color: #fee;
+  color: #d32f2f;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 15px;
+  }
+  
+  .brand-name {
+    font-size: 18px;
+  }
+  
+  .user-name {
+    max-width: 80px;
+  }
+  
+  .user-dropdown {
+    right: -10px;
+  }
 }
 </style>

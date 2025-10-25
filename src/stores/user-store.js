@@ -114,7 +114,7 @@ export const useUserStore = defineStore('user', {
     /**
      * 用户头像URL
      */
-    userAvatar: (state) => state.currentUser?.avatar || '/static/images/default-avatar.png',
+    userAvatar: (state) => state.currentUser?.avatar || '/images/default-avatar.svg',
     
     /**
      * 用户昵称
@@ -184,15 +184,15 @@ export const useUserStore = defineStore('user', {
           }
           
           // 设置用户信息
-          this.currentUser = response.user
+          this.currentUser = response.userInfo
           this.isAuthenticated = true
           
           // 初始化权限检查器
-          this.permissionChecker = new AdminPermissionChecker(response.user)
+          this.permissionChecker = new AdminPermissionChecker(response.userInfo)
           
           // 获取用户统计信息
-          if (response.user?.id) {
-            await this.fetchUserStats(response.user.id)
+          if (response.userInfo?.id) {
+            await this.fetchUserStats(response.userInfo.id)
           }
           
           this.stopLoading()

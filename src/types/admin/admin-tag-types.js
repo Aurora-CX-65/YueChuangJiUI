@@ -106,16 +106,3 @@
  * @property {string} createdTime - 创建时间
  */
 
-export {
-  // 主要类型导出
-  AdminTagType,
-  TagCreateRequest,
-  TagUpdateRequest,
-  TagQueryParams,
-  TagStatsType,
-  TagUsageStats,
-  BatchTagOperationRequest,
-  TagValidationResult,
-  TagRelationInfo,
-  BookBasicInfo
-};

@@ -152,19 +152,3 @@
  * @property {number} level - 层级
  */
 
-export {
-  // 主要类型导出
-  AdminCategoryType,
-  CategoryCreateRequest,
-  CategoryUpdateRequest,
-  CategoryQueryParams,
-  CategoryTreeNode,
-  CategoryStatsType,
-  CategoryUsageStats,
-  BatchCategoryOperationRequest,
-  CategoryValidationResult,
-  CategoryRelationInfo,
-  CategoryMoveRequest,
-  CategoryPath,
-  CategoryPathNode
-};

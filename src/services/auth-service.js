@@ -77,9 +77,9 @@ export class AuthService {
    * @returns {Promise<boolean>} 验证结果
    */
   static async verifyEmailCode(email, code, type) {
-    return await httpClient.post('/api/auth/verify-email-code', null, {
-      params: { email, code, type }
-    })
+    // 构建查询参数
+    const params = new URLSearchParams({ email, code, type }).toString()
+    return await httpClient.post(`/api/auth/verify-email-code?${params}`)
   }
 
   /**
@@ -102,9 +102,9 @@ export class AuthService {
    * @returns {Promise<boolean>} 验证结果
    */
   static async verifyEmail(email, code) {
-    return await httpClient.post('/api/auth/verify-email', null, {
-      params: { email, code }
-    })
+    // 构建查询参数
+    const params = new URLSearchParams({ email, code }).toString()
+    return await httpClient.post(`/api/auth/verify-email?${params}`)
   }
 
   /**

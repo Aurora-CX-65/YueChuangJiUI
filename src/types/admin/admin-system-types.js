@@ -282,29 +282,3 @@
  * @property {boolean} compressBackup - 压缩备份
  */
 
-export {
-  // 主要类型导出
-  SystemStatsType,
-  UserSystemStats,
-  UserRoleDistribution,
-  BookSystemStats,
-  BookCategoryDistribution,
-  ContentSystemStats,
-  SystemPerformanceStats,
-  SystemResourceStats,
-  OperationLogType,
-  OperationLogQueryParams,
-  SystemSettingsResponse,
-  GeneralSettings,
-  SecuritySettings,
-  ContentSettings,
-  NotificationSettings,
-  NotificationTrigger,
-  StorageSettings,
-  SystemSettingsRequest,
-  SystemHealthCheck,
-  HealthCheckItem,
-  SystemBackupInfo,
-  BackupRecord,
-  BackupSettings
-};

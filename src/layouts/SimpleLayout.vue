@@ -4,9 +4,6 @@
 
 <script>
 export default {
-  name: 'App',
+  name: 'SimpleLayout',
 };
 </script>
-
-<style>
-</style>

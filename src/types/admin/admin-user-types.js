@@ -155,22 +155,3 @@
  * @property {number} likesReceived - 获得点赞数
  */
 
-export {
-  // 主要类型导出，供其他模块使用
-  AdminUserType,
-  UserStatusUpdateRequest,
-  UserRoleUpdateRequest,
-  SuspendUserRequest,
-  BanUserRequest,
-  UnbanUserRequest,
-  BanLogResponse,
-  UserQueryParams,
-  UserStatsType,
-  UserRoleStats,
-  PasswordResetResponse,
-  BatchUserOperationRequest,
-  BatchOperationResult,
-  BatchOperationError,
-  UserDetailExtension,
-  UserActivityStats
-};
