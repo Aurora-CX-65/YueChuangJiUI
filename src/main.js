@@ -15,6 +15,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 // 导入错误处理相关模块
 import { ErrorHandler } from './utils/error-handler.js'
 import { notificationManager } from './utils/notification-manager.js'
+import { TokenManager } from './utils/token-manager.js'
+import { useUserStore } from './stores/user-store.js'
 
 // 创建Vue应用实例
 const app = createApp(App)
@@ -54,20 +56,40 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-// 设置全局错误处理器
-ErrorHandler.setupGlobalErrorHandler()
+// 异步初始化应用
+async function initializeApp() {
+  // 设置全局错误处理器
+  ErrorHandler.setupGlobalErrorHandler()
 
-// 请求浏览器通知权限
-notificationManager.requestNotificationPermission()
-
-// 在window对象上暴露一些全局方法供其他脚本使用
-if (typeof window !== 'undefined') {
-  window.showToast = (message, type, duration) => {
-    notificationManager.show(message, type, { duration })
+  // 清理过期或无效的token
+  if (TokenManager.getToken() && TokenManager.isTokenExpired()) {
+    console.log('检测到过期token，正在清理...')
+    TokenManager.removeToken()
   }
-  
-  window.notificationManager = notificationManager
+
+  // 初始化用户状态
+  const userStore = useUserStore()
+  await userStore.initializeUserState()
+
+  // 请求浏览器通知权限
+  notificationManager.requestNotificationPermission()
+
+  // 在window对象上暴露一些全局方法供其他脚本使用
+  if (typeof window !== 'undefined') {
+    window.showToast = (message, type, duration) => {
+      notificationManager.show(message, type, { duration })
+    }
+    
+    window.notificationManager = notificationManager
+  }
+
+  // 挂载应用
+  app.mount('#app')
 }
 
-// 挂载应用
-app.mount('#app')
+// 启动应用
+initializeApp().catch(error => {
+  console.error('应用初始化失败:', error)
+  // 即使初始化失败，也要挂载应用
+  app.mount('#app')
+})

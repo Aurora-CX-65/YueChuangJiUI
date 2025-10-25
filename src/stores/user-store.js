@@ -828,6 +828,48 @@ export const useUserStore = defineStore('user', {
         };
       }
       return this.permissionChecker.checkResourcePermission(resourceType, action, resource);
+    },
+
+    /**
+     * 初始化用户状态
+     * 检查本地存储的token状态，清理无效的认证信息
+     */
+    async initializeUserState() {
+      try {
+        // 检查是否有token
+        const token = TokenManager.getToken()
+        
+        if (!token) {
+          // 没有token，确保状态为未认证
+          this.clearUserState()
+          return
+        }
+
+        // 检查token是否过期
+        if (TokenManager.isTokenExpired()) {
+          console.log('检测到过期token，清理用户状态')
+          this.clearUserState()
+          return
+        }
+
+        // token存在且未过期，但需要验证用户状态是否一致
+        if (this.isAuthenticated && this.currentUser) {
+          // 状态一致，无需处理
+          return
+        }
+
+        // token存在但用户状态不一致，尝试获取用户信息
+        try {
+          await this.fetchCurrentUser()
+        } catch (error) {
+          // 获取用户信息失败，可能token无效，清理状态
+          console.log('获取用户信息失败，清理用户状态:', error.message)
+          this.clearUserState()
+        }
+      } catch (error) {
+        console.error('初始化用户状态失败:', error)
+        this.clearUserState()
+      }
     }
   },
 

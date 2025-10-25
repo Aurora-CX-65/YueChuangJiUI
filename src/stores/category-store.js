@@ -86,17 +86,21 @@ export const useCategoryStore = defineStore('category', {
     },
     
     /**
-     * 获取热门分类
+     * 获取热门分类（显示所有启用的分类）
      */
     popularCategories: (state) => {
+      // 返回所有启用的分类，按排序顺序显示
       return state.categories
-        .filter(category => state.categoryStats[category.id]?.bookCount > 0)
+        .filter(category => category.status === 'active')
         .sort((a, b) => {
-          const aCount = state.categoryStats[a.id]?.bookCount || 0
-          const bCount = state.categoryStats[b.id]?.bookCount || 0
-          return bCount - aCount
+          // 按sortOrder排序，如果没有则按创建时间排序
+          const aSortOrder = a.sortOrder || 999
+          const bSortOrder = b.sortOrder || 999
+          if (aSortOrder !== bSortOrder) {
+            return aSortOrder - bSortOrder
+          }
+          return new Date(a.createdTime || 0) - new Date(b.createdTime || 0)
         })
-        .slice(0, 10)
     }
   },
 
@@ -118,7 +122,7 @@ export const useCategoryStore = defineStore('category', {
         
         this.startLoading()
         
-        const categories = await CategoryService.getAllCategories()
+        const categories = await CategoryService.getCategories()
         
         if (categories) {
           this.categories = categories

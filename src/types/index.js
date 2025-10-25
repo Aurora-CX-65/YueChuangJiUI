@@ -94,12 +94,21 @@ export const USER_STATUS = {
  * 书籍状态枚举
  */
 export const BOOK_STATUS = {
-    DRAFT: 'draft',
-    PENDING_REVIEW: 'pending_review',
+    DRAFT: 'draft',                    // 草稿
+    PENDING_REVIEW: 'pending_review',  // 待审核
+    PUBLISHED: 'published',            // 已发布（一次性发布完整作品）
+    SERIALIZING: 'serializing',        // 连载中（正在更新中）
+    COMPLETED: 'completed',            // 已完结（连载完成）
+    SUSPENDED: 'suspended'             // 已暂停
+}
+
+/**
+ * 书籍可见状态枚举（对读者可见的状态）
+ */
+export const BOOK_VISIBLE_STATUS = {
     PUBLISHED: 'published',
     SERIALIZING: 'serializing',
-    COMPLETED: 'completed',
-    SUSPENDED: 'suspended'
+    COMPLETED: 'completed'
 }
 
 /**

@@ -4,15 +4,20 @@
       <img src="@/assets/logo.svg" alt="Logo" class="logo" />
       <span class="brand-name">阅创集</span>
       <nav class="nav-links">
-        <router-link to="/">首页</router-link>
+        <router-link to="/" exact>首页</router-link>
         <router-link to="/books">书库</router-link>
         <router-link to="/ranking">排行</router-link>
       </nav>
     </div>
     <div class="navbar-right">
       <div class="search-bar">
-        <input type="text" placeholder="搜索..." />
-        <button>
+        <input 
+          type="text" 
+          placeholder="搜索..." 
+          v-model="searchKeyword"
+          @keyup.enter="handleSearch"
+        />
+        <button @click="handleSearch">
           <el-icon><Search /></el-icon>
         </button>
       </div>
@@ -61,7 +66,8 @@ export default {
   },
   data() {
     return {
-      showDropdown: false
+      showDropdown: false,
+      searchKeyword: ''
     }
   },
   setup() {
@@ -114,6 +120,25 @@ export default {
       } catch (error) {
         console.error('退出登录失败:', error)
       }
+    },
+    
+    /**
+     * 处理搜索
+     */
+    handleSearch() {
+      const keyword = this.searchKeyword.trim()
+      if (!keyword) {
+        return
+      }
+      
+      // 跳转到书库页面并传递搜索关键词
+      this.$router.push({
+        path: '/books',
+        query: { keyword }
+      })
+      
+      // 清空搜索框
+      this.searchKeyword = ''
     }
   }
 }
@@ -128,8 +153,12 @@ export default {
   padding: 0 20px;
   background: var(--primary-gradient);
   color: white;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-left, .navbar-right, .nav-links, .auth-buttons {
@@ -152,11 +181,35 @@ export default {
   color: white;
   text-decoration: none;
   margin: 0 10px;
-  transition: color 0.3s;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .nav-links a:hover {
   color: var(--accent-color);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 活跃状态样式 - 使用精确匹配 */
+.nav-links a.router-link-exact-active {
+  color: var(--accent-color);
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+/* 活跃状态下的底部指示器 */
+.nav-links a.router-link-exact-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background-color: var(--accent-color);
+  border-radius: 1px;
 }
 
 .search-bar {

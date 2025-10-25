@@ -18,7 +18,9 @@ import {
  * @returns {boolean} 是否已认证
  */
 function isAuthenticated() {
-  return TokenManager.isAuthenticated()
+  const userStore = useUserStore()
+  // 使用用户状态管理中的登录状态，确保与导航栏保持一致
+  return userStore.isLoggedIn
 }
 
 /**

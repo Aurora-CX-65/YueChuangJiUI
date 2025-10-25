@@ -1,7 +1,9 @@
 <template>
-  <div>
+  <div class="full-layout">
     <Navbar />
-    <router-view />
+    <main class="main-content">
+      <router-view />
+    </main>
     <Footer />
   </div>
 </template>
@@ -18,3 +20,17 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.full-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  overflow-x: hidden;
+  padding-top: var(--header-height);
+}
+</style>
