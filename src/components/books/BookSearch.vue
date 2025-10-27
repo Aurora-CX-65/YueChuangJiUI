@@ -271,6 +271,8 @@ export default {
 
 .search-button {
   flex-shrink: 0;
+  position: relative;
+  z-index: 100;
 }
 
 .reset-button {
@@ -279,6 +281,8 @@ export default {
   border-color: #dcdfe6;
   color: #606266;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 100;
 }
 
 .reset-button:hover:not(:disabled) {
@@ -299,7 +303,7 @@ export default {
   border-top: none;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 9999;
+  z-index: 999;
   max-height: 400px;
   overflow-y: auto;
   min-width: 300px;

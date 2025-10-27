@@ -34,21 +34,28 @@
         <el-icon class="dropdown-icon" :class="{ 'rotated': showDropdown }">
           <ArrowDown />
         </el-icon>
-        
-        <!-- 用户下拉菜单 -->
-        <div v-if="showDropdown" class="user-dropdown">
-          <div class="dropdown-item" @click="goToProfile">
-            <el-icon class="icon"><User /></el-icon>
-            <span>个人中心</span>
-          </div>
-          <div class="dropdown-divider"></div>
-          <div class="dropdown-item logout-item" @click="handleLogout">
-            <el-icon class="icon"><SwitchButton /></el-icon>
-            <span>退出登录</span>
-          </div>
-        </div>
       </div>
     </div>
+    
+    <!-- 使用Teleport将用户下拉菜单渲染到body根节点 -->
+    <Teleport to="body">
+      <div v-if="showDropdown" class="user-dropdown-portal" :style="dropdownStyle" @click.stop>
+        <div class="dropdown-item" @click="goToProfile">
+          <el-icon class="icon"><User /></el-icon>
+          <span>个人中心</span>
+        </div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item logout-item" @click="handleLogout">
+          <el-icon class="icon"><SwitchButton /></el-icon>
+          <span>退出登录</span>
+        </div>
+      </div>
+    </Teleport>
+    
+    <!-- 点击遮罩层关闭下拉菜单 -->
+    <Teleport to="body">
+      <div v-if="showDropdown" class="dropdown-overlay" @click="closeDropdown"></div>
+    </Teleport>
   </header>
 </template>
 
@@ -67,7 +74,24 @@ export default {
   data() {
     return {
       showDropdown: false,
-      searchKeyword: ''
+      searchKeyword: '',
+      dropdownStyle: {}
+    }
+  },
+  computed: {
+    /**
+     * 计算下拉菜单的位置样式
+     */
+    dropdownPosition() {
+      if (!this.$refs.userInfoRef) return {}
+      
+      const rect = this.$refs.userInfoRef.getBoundingClientRect()
+      return {
+        position: 'fixed',
+        top: `${rect.bottom + 8}px`,
+        right: `${window.innerWidth - rect.right}px`,
+        zIndex: 999999
+      }
     }
   },
   setup() {
@@ -89,6 +113,33 @@ export default {
      */
     toggleDropdown() {
       this.showDropdown = !this.showDropdown
+      if (this.showDropdown) {
+        this.$nextTick(() => {
+          this.updateDropdownPosition()
+        })
+      }
+    },
+    
+    /**
+     * 更新下拉菜单位置
+     */
+    updateDropdownPosition() {
+      if (!this.$refs.userInfoRef) return
+      
+      const rect = this.$refs.userInfoRef.getBoundingClientRect()
+      this.dropdownStyle = {
+        position: 'fixed',
+        top: `${rect.bottom + 8}px`,
+        right: `${window.innerWidth - rect.right}px`,
+        zIndex: 999999
+      }
+    },
+    
+    /**
+     * 关闭下拉菜单
+     */
+    closeDropdown() {
+      this.showDropdown = false
     },
     
     /**
@@ -299,18 +350,37 @@ export default {
   transform: rotate(180deg);
 }
 
-/* 下拉菜单样式 */
-.user-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
+/* Portal下拉菜单样式 - 渲染到body根节点 */
+.user-dropdown-portal {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   min-width: 160px;
   overflow: hidden;
-  z-index: 1001;
+  border: 1px solid #e4e7ed;
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 遮罩层样式 */
+.dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999998;
+  background: transparent;
 }
 
 .dropdown-item {
@@ -367,8 +437,8 @@ export default {
     max-width: 80px;
   }
   
-  .user-dropdown {
-    right: -10px;
+  .user-dropdown-portal {
+    min-width: 140px;
   }
 }
 </style>

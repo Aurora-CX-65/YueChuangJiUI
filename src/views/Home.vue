@@ -65,9 +65,43 @@
     </section>
     
     <section class="popular-books">
-      <h2>热门书籍</h2>
-      <!-- Book cards will be dynamically generated here -->
-      <div class="books-placeholder">热门书籍区域</div>
+      <div class="section-header">
+        <h2>热门书籍</h2>
+        <el-button 
+          type="primary" 
+          link 
+          @click="goToBooks"
+          class="more-button"
+        >
+          获取更多
+          <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+        </el-button>
+      </div>
+      
+      <div class="books-container">
+        <!-- 加载状态 -->
+        <div v-if="booksLoading" class="loading-state">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          <span>加载中...</span>
+        </div>
+        
+        <!-- 热门书籍列表 -->
+        <div v-else-if="hotBooks.length > 0" class="books-grid">
+          <div 
+            v-for="book in hotBooks" 
+            :key="book.id"
+            class="book-item"
+          >
+            <BookCard :book="book" />
+          </div>
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <el-icon><Reading /></el-icon>
+          <p>暂无热门书籍</p>
+        </div>
+      </div>
     </section>
   </div>
 </template>
@@ -76,22 +110,30 @@
 import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCategoryStore } from '@/stores/category-store.js'
-import { Loading, Collection, FolderOpened, ArrowRight, MoreFilled } from '@element-plus/icons-vue'
+import { BookService } from '@/services/book-service.js'
+import BookCard from '@/components/books/BookCard.vue'
+import { Loading, Collection, FolderOpened, ArrowRight, MoreFilled, Reading } from '@element-plus/icons-vue'
 
 export default {
   name: 'Home',
   components: {
+    BookCard,
     Loading,
     Collection,
     FolderOpened,
     ArrowRight,
-    MoreFilled
+    MoreFilled,
+    Reading
   },
   setup() {
     const categoryStore = useCategoryStore()
     const router = useRouter()
     const categoriesGrid = ref(null)
     const maxVisibleCategories = ref(5) // 默认显示5个
+    
+    // 热门书籍相关状态
+    const hotBooks = ref([])
+    const booksLoading = ref(false)
     
     // 获取热门分类
     const popularCategories = computed(() => categoryStore.popularCategories)
@@ -141,10 +183,32 @@ export default {
       })
     }
     
-    // 组件挂载时获取分类数据
+    // 获取热门书籍
+    const fetchHotBooks = async () => {
+      try {
+        booksLoading.value = true
+        const response = await BookService.getHotBooks()
+        if (response && response.data) {
+          // 限制显示数量为10本（两排，每排5本）
+          hotBooks.value = response.data.slice(0, 10)
+        }
+      } catch (error) {
+        console.error('获取热门书籍失败:', error)
+        hotBooks.value = []
+      } finally {
+        booksLoading.value = false
+      }
+    }
+    
+    // 组件挂载时获取数据
     onMounted(async () => {
       try {
-        await categoryStore.fetchCategories()
+        // 并行获取分类数据和热门书籍数据
+        await Promise.all([
+          categoryStore.fetchCategories(),
+          fetchHotBooks()
+        ])
+        
         // 数据加载完成后计算可显示数量
         await nextTick()
         updateMaxCategories()
@@ -152,7 +216,7 @@ export default {
         // 监听窗口大小变化
         window.addEventListener('resize', updateMaxCategories)
       } catch (error) {
-        console.error('获取分类数据失败:', error)
+        console.error('获取数据失败:', error)
       }
     })
     
@@ -163,6 +227,8 @@ export default {
       visibleCategories,
       hasMoreCategories,
       categoriesGrid,
+      hotBooks,
+      booksLoading,
       goToBooks
     }
   }
@@ -179,7 +245,7 @@ export default {
   margin-bottom: 40px;
 }
 
-.carousel-placeholder, .books-placeholder {
+.carousel-placeholder {
   height: 200px;
   background-color: #f0f0f0;
   display: flex;
@@ -390,10 +456,34 @@ h2 {
   font-size: 16px;
 }
 
+/* 热门书籍区域样式 */
+.books-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+  padding: 0;
+}
+
+.book-item {
+  width: 100%;
+  height: 200px;
+}
+
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .category-card {
     width: 160px;
+  }
+  
+  .books-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
   }
 }
 
@@ -406,7 +496,7 @@ h2 {
     margin-bottom: 30px;
   }
   
-  .carousel-placeholder, .books-placeholder {
+  .carousel-placeholder {
     height: 150px;
   }
   
@@ -450,6 +540,15 @@ h2 {
   .category-name {
     font-size: 13px;
   }
+  
+  .books-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  
+  .book-item {
+    height: 180px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -475,6 +574,15 @@ h2 {
   
   .category-name {
     font-size: 12px;
+  }
+  
+  .books-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .book-item {
+    height: 160px;
   }
 }
 </style>
