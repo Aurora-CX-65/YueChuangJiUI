@@ -21,6 +21,10 @@
           <el-icon><Search /></el-icon>
         </button>
       </div>
+      <div class="notif-button" @click="toggleNotifDropdown" ref="notifRef" title="通知">
+        <el-icon><Bell /></el-icon>
+        <span v-if="notificationStore.unreadCount > 0" class="notif-badge">{{ notificationStore.unreadCount }}</span>
+      </div>
       
       <!-- 未登录状态：显示登录按钮 -->
       <div v-if="!userStore.isLoggedIn" class="auth-buttons">
@@ -55,6 +59,29 @@
         </div>
       </div>
     </Teleport>
+    <Teleport to="body">
+      <div v-if="showNotifDropdown" class="user-dropdown-portal" :style="notifDropdownStyle" @click.stop>
+        <div class="dropdown-item" @click="goToNotifications">
+          <el-icon class="icon"><Bell /></el-icon>
+          <span>查看全部通知</span>
+        </div>
+        <div class="dropdown-divider"></div>
+        <div v-for="n in (notificationStore.notifications.items.slice(0,5))" :key="n.id" class="dropdown-item" @click="openNotification(n)">
+          <span>{{ n.title || '通知' }}</span>
+        </div>
+      </div>
+    </Teleport>
+    <el-dialog v-model="notifDialogVisible" :title="notifDialogItem?.title || '通知'" width="560px">
+      <div v-if="notifDialogLoading" class="loading"><el-skeleton :rows="4" animated /></div>
+      <div v-else>
+        <p style="white-space: pre-wrap">{{ notifDialogItem?.content || '' }}</p>
+        <div style="margin-top:12px;color:#888">时间：{{ formatDateTime(notifDialogItem?.createdAt) }}</div>
+      </div>
+      <template #footer>
+        <el-button @click="notifDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="confirmNotificationRead">确认已读</el-button>
+      </template>
+    </el-dialog>
     
     <!-- 点击遮罩层关闭下拉菜单 -->
     <Teleport to="body">
@@ -65,7 +92,9 @@
 
 <script>
 import { useUserStore } from '@/stores/user-store.js'
-import { Search, ArrowDown, User, SwitchButton, Setting } from '@element-plus/icons-vue'
+import { useNotificationStore } from '@/stores/notification-store.js'
+import { NotificationService } from '@/services/notification-service.js'
+import { Search, ArrowDown, User, SwitchButton, Setting, Bell } from '@element-plus/icons-vue'
 
 export default {
   name: 'Navbar',
@@ -74,13 +103,20 @@ export default {
     ArrowDown,
     User,
     SwitchButton,
-    Setting
+    Setting,
+    Bell
   },
   data() {
     return {
       showDropdown: false,
+      showNotifDropdown: false,
       searchKeyword: '',
-      dropdownStyle: {}
+      dropdownStyle: {},
+      notifDropdownStyle: {}
+      ,
+      notifDialogVisible: false,
+      notifDialogItem: null,
+      notifDialogLoading: false
     }
   },
   computed: {
@@ -101,13 +137,16 @@ export default {
   },
   setup() {
     const userStore = useUserStore()
+    const notificationStore = useNotificationStore()
     return {
-      userStore
+      userStore,
+      notificationStore
     }
   },
   mounted() {
     // 点击外部关闭下拉菜单
     document.addEventListener('click', this.handleClickOutside)
+    this.notificationStore.fetchUnreadCount()
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleClickOutside)
@@ -139,6 +178,16 @@ export default {
         zIndex: 999999
       }
     },
+    updateNotifDropdownPosition() {
+      if (!this.$refs.notifRef) return
+      const rect = this.$refs.notifRef.getBoundingClientRect()
+      this.notifDropdownStyle = {
+        position: 'fixed',
+        top: `${rect.bottom + 8}px`,
+        right: `${window.innerWidth - rect.right}px`,
+        zIndex: 999999
+      }
+    },
     
     /**
      * 关闭下拉菜单
@@ -153,6 +202,9 @@ export default {
     handleClickOutside(event) {
       if (this.$refs.userInfoRef && !this.$refs.userInfoRef.contains(event.target)) {
         this.showDropdown = false
+      }
+      if (this.$refs.notifRef && !this.$refs.notifRef.contains(event.target)) {
+        this.showNotifDropdown = false
       }
     },
     
@@ -199,6 +251,62 @@ export default {
       
       // 清空搜索框
       this.searchKeyword = ''
+    },
+    toggleNotifDropdown() {
+      this.showNotifDropdown = !this.showNotifDropdown
+      if (this.showNotifDropdown) {
+        this.$nextTick(() => {
+          this.updateNotifDropdownPosition()
+        })
+        // 预加载最近通知
+        this.notificationStore.fetchNotifications(1, 5)
+      }
+    },
+    goToNotifications() {
+      this.showNotifDropdown = false
+      if (this.userStore.isAdmin) {
+        this.$router.push('/admin/notifications')
+      } else {
+        this.$router.push('/notifications')
+      }
+    },
+    async openNotification(n) {
+      this.showNotifDropdown = false
+      this.notifDialogLoading = true
+      this.notifDialogVisible = true
+      try {
+        let item = n
+        if (!item.content || !item.title) {
+          const detail = await NotificationService.getNotificationById(n.id)
+          item = detail || n
+        }
+        this.notifDialogItem = item
+      } finally {
+        this.notifDialogLoading = false
+      }
+    },
+    async confirmNotificationRead() {
+      if (!this.notifDialogItem) {
+        this.notifDialogVisible = false
+        return
+      }
+      try {
+        await this.notificationStore.markAsRead(this.notifDialogItem.id)
+      } finally {
+        this.notifDialogVisible = false
+      }
+    },
+    formatDateTime(val) {
+      if (!val) return ''
+      const d = typeof val === 'string' ? new Date(val) : val
+      if (isNaN(d.getTime())) return val
+      const y = d.getFullYear()
+      const M = String(d.getMonth() + 1).padStart(2, '0')
+      const D = String(d.getDate()).padStart(2, '0')
+      const h = String(d.getHours()).padStart(2, '0')
+      const m = String(d.getMinutes()).padStart(2, '0')
+      const s = String(d.getSeconds()).padStart(2, '0')
+      return `${y}-${M}-${D} ${h}:${m}:${s}`
     }
   }
 }
@@ -297,6 +405,36 @@ export default {
 
 .search-bar button:hover {
   background-color: var(--accent-color-dark, #409eff);
+}
+
+.notif-button {
+  position: relative;
+  margin-right: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.notif-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
 }
 
 /* 认证按钮样式 */

@@ -75,6 +75,17 @@ class TokenManager {
   }
 
   /**
+   * 删除刷新令牌（兼容旧调用）
+   */
+  static removeRefreshToken() {
+    try {
+      localStorage.removeItem(API_CONFIG.auth.refreshTokenKey)
+    } catch (error) {
+      console.error('删除刷新令牌失败:', error)
+    }
+  }
+
+  /**
    * 设置令牌过期时间
    * @param {number} expiresIn 过期时间（秒）
    */

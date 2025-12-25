@@ -54,6 +54,16 @@ const routes = [
           description: '查看与管理个人信息',
           requiresAuth: true
         }
+      },
+      {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('../views/NotificationsView.vue'),
+        meta: {
+          title: '通知中心',
+          description: '查看与管理通知',
+          requiresAuth: true
+        }
       }
     ],
   },
@@ -93,6 +103,11 @@ const routes = [
         },
       },
     ],
+  }
+  ,
+  {
+    path: '/login',
+    redirect: '/auth/login'
   }
   ,
   {

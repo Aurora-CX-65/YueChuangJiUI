@@ -14,20 +14,14 @@ class ErrorHandler {
      */
     static handleError(error, options = {}) {
         const {
-            showNotification = true,
+            showNotification = false,
             customMessage = null
         } = options
 
         // 获取错误信息
         const errorInfo = this.parseError(error)
 
-        // 显示错误通知
-        if (showNotification) {
-            const message = customMessage || errorInfo.message
-            notificationManager.error(message, {
-                duration: this.getNotificationDuration(errorInfo.code)
-            })
-        }
+        // 不进行全局错误通知
 
         // 特殊错误处理
         this.handleSpecialErrors(error, errorInfo)
@@ -132,33 +126,26 @@ class ErrorHandler {
      * 处理未授权错误
      */
     static async handleUnauthorized() {
-        // 清除令牌
+        // 清除令牌，但不强制跳转登录页
         const { TokenManager } = await import('./token-manager.js')
         TokenManager.clearAuth()
-
-        // 显示特殊通知
-        notificationManager.warning('登录已过期，请重新登录', {
-            duration: 8000
-        })
-
-        // 延迟跳转，让用户看到通知
-        setTimeout(() => {
-            this.redirectToLogin()
-        }, 2000)
+        if (window.notificationManager) {
+            window.notificationManager.info('登录状态已失效，请登录后继续操作')
+        }
     }
 
     /**
      * 处理权限不足错误
      */
     static handleForbidden() {
-        notificationManager.warning('权限不足，无法执行此操作')
+        // 不进行全局权限不足提示
     }
 
     /**
      * 处理请求频率限制错误
      */
     static handleRateLimit() {
-        notificationManager.warning('请求过于频繁，请稍后再试')
+        // 不进行全局频率限制提示
     }
 
     /**
@@ -166,23 +153,7 @@ class ErrorHandler {
      * @param {number} code 错误码
      */
     static handleServerError(code) {
-        let message = '服务器暂时无法处理请求，请稍后重试'
-
-        switch (code) {
-            case 502:
-                message = '网关错误，请稍后重试'
-                break
-            case 503:
-                message = '服务暂时不可用，请稍后重试'
-                break
-            case 504:
-                message = '网关超时，请稍后重试'
-                break
-        }
-
-        notificationManager.error(message, {
-            duration: 8000
-        })
+        // 不进行全局服务器错误提示
     }
 
     /**
@@ -210,10 +181,10 @@ class ErrorHandler {
         if (typeof window !== 'undefined') {
             // 尝试使用Vue Router
             if (window.router) {
-                window.router.push('/login')
+                window.router.push('/auth/login')
             } else if (window.location) {
                 // 降级到直接跳转
-                window.location.href = '/login'
+                window.location.href = '/auth/login'
             }
         }
     }

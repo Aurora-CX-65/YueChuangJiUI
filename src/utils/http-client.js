@@ -149,11 +149,7 @@ class HttpClient {
       }
       const mergedOptions = {
         headers: { ...baseHeaders },
-        ...options,
-        headers: {
-          ...baseHeaders,
-          ...options.headers
-        }
+        ...options
       }
 
       // 执行请求拦截器

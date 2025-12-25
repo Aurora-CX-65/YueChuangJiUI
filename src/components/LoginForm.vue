@@ -48,6 +48,16 @@
       <router-link to="/auth/register">注册新账号</router-link>
       <router-link to="/auth/forgot-password">忘记密码？</router-link>
     </div>
+    <el-dialog v-model="banDialogVisible" title="登录受限" width="520px">
+      <div class="ban-content">
+        <p v-if="banInfo.type === 'banned'">您的账户已被永久封禁</p>
+        <p v-else-if="banInfo.type === 'suspended'">您的账户已被临时封禁，解封时间：{{ formatDateTime(banInfo.until) }}</p>
+        <p v-if="banInfo.reason">封禁原因：{{ banInfo.reason }}</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="banDialogVisible = false">我知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -55,6 +65,7 @@
 import { useUserStore } from '@/stores/user-store.js';
 import { notificationManager } from '@/utils/notification-manager.js';
 import { User, Lock } from '@element-plus/icons-vue';
+import { UserService } from '@/services/user-service.js'
 
 export default {
   name: 'LoginForm',
@@ -66,6 +77,8 @@ export default {
         password: '',
         rememberMe: false,
       },
+      banDialogVisible: false,
+      banInfo: { type: '', reason: '', until: '' },
       rules: {
         username: [
           { required: true, message: '请输入用户名或邮箱', trigger: 'blur' },
@@ -85,6 +98,18 @@ export default {
     };
   },
   methods: {
+    formatDateTime(val) {
+      if (!val) return ''
+      const d = typeof val === 'string' ? new Date(val) : val
+      if (isNaN(d.getTime())) return val
+      const y = d.getFullYear()
+      const M = String(d.getMonth() + 1).padStart(2, '0')
+      const D = String(d.getDate()).padStart(2, '0')
+      const h = String(d.getHours()).padStart(2, '0')
+      const m = String(d.getMinutes()).padStart(2, '0')
+      const s = String(d.getSeconds()).padStart(2, '0')
+      return `${y}-${M}-${D} ${h}:${m}:${s}`
+    },
     async login() {
       // 验证表单
       if (!this.$refs.loginFormRef) return;
@@ -106,7 +131,26 @@ export default {
           this.$router.push('/');
         }
       } catch (error) {
-        // 错误将由 user-store 的 handleError 统一处理
+        const status = error.status || error.response?.status
+        const code = error.code || error.data?.code
+        if (status === 403 && (code === 309 || code === 310)) {
+          try {
+            const u = this.loginForm.username.trim()
+            if (u) {
+              const info = await UserService.getUserByUsername(u)
+              const reason = info?.banReason || ''
+              const until = info?.banUntil || ''
+              this.banInfo = { type: code === 309 ? 'banned' : 'suspended', reason, until }
+              this.banDialogVisible = true
+            } else {
+              this.banInfo = { type: code === 309 ? 'banned' : 'suspended', reason: '', until: '' }
+              this.banDialogVisible = true
+            }
+          } catch {
+            this.banInfo = { type: code === 309 ? 'banned' : 'suspended', reason: '', until: '' }
+            this.banDialogVisible = true
+          }
+        }
       } finally {
         this.loading = false;
       }

@@ -77,8 +77,13 @@ function getRedirectPath(to, userRole) {
   const meta = to.meta || {}
 
   // 如果需要认证但用户未登录，重定向到登录页
-  if ((meta.requiresAuth || meta.requiresRole || meta.requiresAnyRole) && !isAuthenticated()) {
-    return `/auth/login?redirect=${encodeURIComponent(to.fullPath)}`
+  if (!isAuthenticated()) {
+    // 不强制跳转到登录页，允许访问 requiresAuth 的页面以进行只读展示
+    // 对需要角色的页面，跳转到首页
+    if (meta.requiresRole || meta.requiresAnyRole) {
+      return '/'
+    }
+    return null
   }
 
   // 如果用户已登录但权限不足，重定向到首页
@@ -100,14 +105,26 @@ function getRedirectPath(to, userRole) {
  * @param {Object} from - 来源路由
  * @param {Function} next - 导航函数
  */
-export function beforeEachGuard(to, from, next) {
-  const userRole = getCurrentUserRole()
+export async function beforeEachGuard(to, from, next) {
+  const userStore = useUserStore()
+  let userRole = getCurrentUserRole()
   const meta = to.meta || {}
 
   // 检查是否为访客页面（如登录、注册页面）
   if (meta.requiresGuest && isAuthenticated()) {
     next('/')
     return
+  }
+
+  // 如果需要权限且用户信息尚未加载，但存在令牌，则尝试初始化用户状态
+  const needAuthCheck = meta.requiresAuth || meta.requiresRole || meta.requiresAnyRole
+  if (needAuthCheck && (!userStore.isLoggedIn || !userStore.currentUser) && TokenManager.getToken()) {
+    try {
+      await userStore.initializeUserState()
+      userRole = getCurrentUserRole()
+    } catch (e) {
+      console.warn('初始化用户状态失败:', e)
+    }
   }
 
   // 检查权限
@@ -155,15 +172,7 @@ export function afterEachGuard(to, from) {
  */
 export function routeErrorHandler(error, to, from) {
   console.error('[Router] 路由错误:', error)
-  
-  // 如果是权限错误，重定向到登录页
-  if (error.message?.includes('权限') || error.message?.includes('认证')) {
-    window.location.href = '/auth/login'
-    return
-  }
-
-  // 其他错误重定向到首页
-  window.location.href = '/'
+  // 不进行自动重定向，便于观察错误并在控制台调试
 }
 
 /**

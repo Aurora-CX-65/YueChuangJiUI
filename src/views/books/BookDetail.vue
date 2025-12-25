@@ -633,7 +633,7 @@ const submitComment = async () => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  router.push('/auth/login')
 }
 
 const goBack = () => {
