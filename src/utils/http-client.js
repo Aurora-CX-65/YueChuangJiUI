@@ -142,11 +142,16 @@ class HttpClient {
     
     try {
       // 合并默认选项
+      const isFormData = options && options.body instanceof FormData
+      const baseHeaders = { ...this.defaultHeaders }
+      if (isFormData) {
+        delete baseHeaders['Content-Type']
+      }
       const mergedOptions = {
-        headers: { ...this.defaultHeaders },
+        headers: { ...baseHeaders },
         ...options,
         headers: {
-          ...this.defaultHeaders,
+          ...baseHeaders,
           ...options.headers
         }
       }

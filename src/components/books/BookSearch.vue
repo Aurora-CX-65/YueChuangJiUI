@@ -245,7 +245,7 @@ export default {
 <style scoped>
 .book-search {
   position: relative;
-  z-index: 1000;
+  z-index: 100;
 }
 
 .search-container {
@@ -256,7 +256,7 @@ export default {
 
 .search-input-group {
   position: relative;
-  z-index: 1001;
+  z-index: 100;
 }
 
 .search-bar {
@@ -272,7 +272,7 @@ export default {
 .search-button {
   flex-shrink: 0;
   position: relative;
-  z-index: 100;
+  z-index: 50;
 }
 
 .reset-button {
@@ -282,7 +282,7 @@ export default {
   color: #606266;
   transition: all 0.3s ease;
   position: relative;
-  z-index: 100;
+  z-index: 50;
 }
 
 .reset-button:hover:not(:disabled) {
@@ -303,7 +303,7 @@ export default {
   border-top: none;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 999;
+  z-index: 1050;
   max-height: 400px;
   overflow-y: auto;
   min-width: 300px;

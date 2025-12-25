@@ -409,7 +409,7 @@ export default {
   overflow-y: auto;
   border: 1px solid #e4e7ed;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  z-index: 999;
+  z-index: 900;
 }
 
 .books-main {

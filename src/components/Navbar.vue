@@ -44,6 +44,10 @@
           <el-icon class="icon"><User /></el-icon>
           <span>个人中心</span>
         </div>
+        <div class="dropdown-item" v-if="userStore.isAdmin" @click="goToAdmin">
+          <el-icon class="icon"><Setting /></el-icon>
+          <span>管理后台</span>
+        </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item logout-item" @click="handleLogout">
           <el-icon class="icon"><SwitchButton /></el-icon>
@@ -61,7 +65,7 @@
 
 <script>
 import { useUserStore } from '@/stores/user-store.js'
-import { Search, ArrowDown, User, SwitchButton } from '@element-plus/icons-vue'
+import { Search, ArrowDown, User, SwitchButton, Setting } from '@element-plus/icons-vue'
 
 export default {
   name: 'Navbar',
@@ -69,7 +73,8 @@ export default {
     Search,
     ArrowDown,
     User,
-    SwitchButton
+    SwitchButton,
+    Setting
   },
   data() {
     return {
@@ -157,6 +162,10 @@ export default {
     goToProfile() {
       this.showDropdown = false
       this.$router.push('/profile')
+    },
+    goToAdmin() {
+      this.showDropdown = false
+      this.$router.push('/admin')
     },
     
     /**
