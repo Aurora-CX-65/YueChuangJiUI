@@ -20,6 +20,18 @@
           </el-select>
           <el-button size="small" type="primary" @click="loadUsers">搜索</el-button>
           <el-button size="small" @click="reset">重置</el-button>
+          <el-dropdown :disabled="!selectedRows.length" @command="handleBatchCommand">
+            <el-button size="small" type="warning">
+              批量操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="suspend">批量临时封禁</el-dropdown-item>
+                <el-dropdown-item command="ban">批量永久封禁</el-dropdown-item>
+                <el-dropdown-item command="unban">批量解除封禁</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
 
@@ -27,7 +39,8 @@
         <div v-if="loading" class="loading"><el-skeleton :rows="6" animated /></div>
         <el-empty v-else-if="users.length === 0" description="暂无用户数据" />
         <div class="table-wrapper" v-else>
-        <el-table :data="users" border size="small">
+        <el-table :data="users" border size="small" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="username" label="用户名" width="160" />
           <el-table-column prop="nickname" label="昵称" width="160" />
@@ -127,6 +140,20 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+    <el-dialog v-model="batchVisible" :title="batchAction === 'suspend' ? '批量临时封禁' : '批量永久封禁'" width="520px">
+      <el-form :model="batchForm" label-width="80px">
+        <el-form-item label="原因" required>
+          <el-input v-model="batchForm.reason" maxlength="200" show-word-limit placeholder="请输入统一的封禁原因" />
+        </el-form-item>
+        <el-form-item label="到期时间" v-if="batchAction === 'suspend'" required>
+          <el-date-picker v-model="batchForm.until" type="datetime" placeholder="选择到期时间" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchVisible = false">取消</el-button>
+        <el-button :type="batchAction === 'suspend' ? 'primary' : 'danger'" :loading="actionLoading" @click="confirmBatch">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -156,7 +183,11 @@ export default {
       suspendForm: { reason: '', until: '' },
       banForm: { reason: '' },
       banLogs: [],
-      logsLoading: false
+      logsLoading: false,
+      selectedRows: [],
+      batchAction: null,
+      batchVisible: false,
+      batchForm: { reason: '', until: '' }
     }
   },
   computed: {
@@ -320,6 +351,70 @@ export default {
         console.error('获取封禁历史失败:', e)
       } finally {
         this.logsLoading = false
+      }
+    },
+    handleSelectionChange(val) {
+      this.selectedRows = val
+    },
+    handleBatchCommand(command) {
+      if (!this.selectedRows.length) return
+      this.batchAction = command
+      this.batchForm = { reason: '', until: '' }
+      
+      if (command === 'unban') {
+        this.$confirm(`确定要解除选中的 ${this.selectedRows.length} 个用户的封禁吗？`, '批量解封', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => this.confirmBatch()).catch(() => {})
+      } else {
+        this.batchVisible = true
+      }
+    },
+    async confirmBatch() {
+      if (this.batchAction !== 'unban') {
+        if (!this.batchForm.reason.trim()) {
+          window.notificationManager && window.notificationManager.error('请填写原因')
+          return
+        }
+        if (this.batchAction === 'suspend' && !this.batchForm.until) {
+          window.notificationManager && window.notificationManager.error('请选择到期时间')
+          return
+        }
+      }
+      
+      this.actionLoading = true
+      try {
+        const ids = this.selectedRows.map(r => r.id)
+        let successCount = 0
+        
+        // 由于没有后端批量接口，这里使用循环调用（前端模拟批量）
+        // 实际生产环境建议增加后端批量接口
+        for (const id of ids) {
+          try {
+            if (this.batchAction === 'suspend') {
+              await AdminService.suspendUser(id, this.batchForm.until, this.batchForm.reason)
+            } else if (this.batchAction === 'ban') {
+              await AdminService.banUser(id, this.batchForm.reason)
+            } else if (this.batchAction === 'unban') {
+              await AdminService.unbanUser(id)
+            }
+            successCount++
+          } catch (e) {
+            console.error(`用户 ${id} 操作失败:`, e)
+          }
+        }
+        
+        if (window.notificationManager) {
+          window.notificationManager.success(`批量操作完成，成功 ${successCount}/${ids.length}`)
+        }
+        this.batchVisible = false
+        this.selectedRows = []
+        this.loadUsers()
+      } catch (e) {
+        console.error('批量操作异常:', e)
+      } finally {
+        this.actionLoading = false
       }
     }
   }

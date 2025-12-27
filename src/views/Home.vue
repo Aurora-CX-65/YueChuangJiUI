@@ -1,8 +1,16 @@
 <template>
   <div class="home">
-    <section class="carousel-section">
-      <!-- Carousel will be implemented here -->
-      <div class="carousel-placeholder">轮播图区域</div>
+    <section class="carousel-section" v-if="banners.length > 0">
+      <el-carousel trigger="click" height="360px" :interval="5000" arrow="hover">
+        <el-carousel-item v-for="banner in banners" :key="banner.id">
+          <div class="banner-item" @click="handleBannerClick(banner)">
+            <el-image :src="banner.imageUrl" fit="cover" class="banner-image" />
+            <div class="banner-overlay" v-if="banner.title">
+              <h3 class="banner-title">{{ banner.title }}</h3>
+            </div>
+          </div>
+        </el-carousel-item>
+      </el-carousel>
     </section>
     
     <section class="popular-categories">
@@ -111,6 +119,7 @@ import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCategoryStore } from '@/stores/category-store.js'
 import { BookService } from '@/services/book-service.js'
+import { BannerService } from '@/services/banner-service.js'
 import BookCard from '@/components/books/BookCard.vue'
 import { Loading, Collection, FolderOpened, ArrowRight, MoreFilled, Reading } from '@element-plus/icons-vue'
 
@@ -131,6 +140,9 @@ export default {
     const categoriesGrid = ref(null)
     const maxVisibleCategories = ref(5) // 默认显示5个
     
+    // 轮播图状态
+    const banners = ref([])
+
     // 热门书籍相关状态
     const hotBooks = ref([])
     const booksLoading = ref(false)
@@ -183,14 +195,50 @@ export default {
       })
     }
     
+    // 获取轮播图
+    const fetchBanners = async () => {
+      try {
+        const res = await BannerService.getActiveBanners()
+        // 假设返回 Result<List<BannerResponse>>，则 res.data 是 list，或者 res 直接是 list (视拦截器而定)
+        // 根据 admin-service pattern: return await httpClient.get(...) -> returns res.data
+        // 所以这里 res 应该是 List<BannerResponse>
+        banners.value = res || []
+      } catch (e) {
+        console.error('获取轮播图失败:', e)
+      }
+    }
+
+    const handleBannerClick = (banner) => {
+      if (banner.bookId) {
+        router.push(`/books/${banner.bookId}`)
+      } else if (banner.linkUrl) {
+        window.open(banner.linkUrl, '_blank')
+      }
+    }
+
     // 获取热门书籍
     const fetchHotBooks = async () => {
       try {
         booksLoading.value = true
         const response = await BookService.getHotBooks()
-        if (response && response.data) {
+        // 拦截器已经解包了 response.data，所以 response 本身就是数据列表
+        // 或者 response.data 是数据列表（取决于后端返回结构）
+        // 兼容处理：检查 response 是否为数组，或者 response.data 是否为数组
+        let books = []
+        if (Array.isArray(response)) {
+          books = response
+        } else if (response && Array.isArray(response.data)) {
+          books = response.data
+        } else if (response && response.records && Array.isArray(response.records)) {
+           // 处理分页结构
+           books = response.records
+        }
+        
+        if (books.length > 0) {
           // 限制显示数量为10本（两排，每排5本）
-          hotBooks.value = response.data.slice(0, 10)
+          hotBooks.value = books.slice(0, 10)
+        } else {
+          hotBooks.value = []
         }
       } catch (error) {
         console.error('获取热门书籍失败:', error)
@@ -206,7 +254,8 @@ export default {
         // 并行获取分类数据和热门书籍数据
         await Promise.all([
           categoryStore.fetchCategories(),
-          fetchHotBooks()
+          fetchHotBooks(),
+          fetchBanners()
         ])
         
         // 数据加载完成后计算可显示数量
@@ -227,9 +276,11 @@ export default {
       visibleCategories,
       hasMoreCategories,
       categoriesGrid,
+      banners,
       hotBooks,
       booksLoading,
-      goToBooks
+      goToBooks,
+      handleBannerClick
     }
   }
 }
@@ -253,6 +304,35 @@ export default {
   align-items: center;
   color: #999;
   border-radius: 5px;
+}
+
+.banner-item {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.banner-image {
+  width: 100%;
+  height: 100%;
+}
+
+.banner-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  color: white;
+}
+
+.banner-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 h2 {

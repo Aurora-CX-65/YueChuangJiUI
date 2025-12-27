@@ -136,4 +136,85 @@ export class AdminService {
   static async deleteTag(id) {
     return await httpClient.delete(`/api/admin/tags/${id}`)
   }
+
+  static async getAdminBooks(page = 1, size = 10, keyword = '', status = '', categoryId = '') {
+    const params = { page, size }
+    if (keyword) params.keyword = keyword
+    if (status) params.status = status
+    if (categoryId) params.categoryId = categoryId
+    return await httpClient.get('/api/admin/books', params)
+  }
+
+  static async deleteBook(id) {
+    return await httpClient.delete(`/api/admin/books/${id}`)
+  }
+
+  static async setBookRecommendStatus(id, isRecommended) {
+    return await httpClient.put(`/api/admin/books/${id}/recommend`, null, { params: { isRecommended } })
+  }
+
+  static async updateBookStatus(id, status, reason = '') {
+    return await httpClient.put(`/api/admin/books/${id}/status`, { status, reason })
+  }
+
+  static async batchUpdateBookStatus(bookIds, status, reason = '') {
+    return await httpClient.put('/api/admin/books/batch/status', { bookIds, status, reason })
+  }
+
+  static async getAdminComments(page = 1, size = 10, keyword = '', status = '', bookId = '', userId = '') {
+    const params = { page, size }
+    if (keyword) params.keyword = keyword
+    if (status) params.status = status
+    if (bookId) params.bookId = bookId
+    if (userId) params.userId = userId
+    return await httpClient.get('/api/admin/comments', params)
+  }
+
+  static async deleteComment(id) {
+    return await httpClient.delete(`/api/admin/comments/${id}`)
+  }
+
+  static async batchDeleteComments(ids) {
+    return await httpClient.delete('/api/admin/comments/batch', { data: { ids } })
+  }
+
+  static async batchReview(payload) {
+    return await httpClient.post('/api/admin/review/batch', payload)
+  }
+
+  // === Banner Management ===
+  static async getAdminBanners(page = 1, size = 10, status = '') {
+    const params = { page, size }
+    if (status) params.status = status
+    return await httpClient.get('/api/admin/banners', params)
+  }
+  static async createBanner(payload) {
+    return await httpClient.post('/api/admin/banners', payload)
+  }
+  static async updateBanner(id, payload) {
+    return await httpClient.put(`/api/admin/banners/${id}`, payload)
+  }
+  static async deleteBanner(id) {
+    return await httpClient.delete(`/api/admin/banners/${id}`)
+  }
+
+  static async searchBooks(keyword) {
+    return await httpClient.get('/api/admin/books/search', { keyword })
+  }
+
+  static async getBookChapters(bookId) {
+    return await httpClient.get(`/api/chapters/book/${bookId}`, { page: 1, size: 1000 })
+  }
+
+  static async getChapterContent(chapterId) {
+    return await httpClient.get(`/api/chapters/${chapterId}`)
+  }
+
+  static async approveChapter(chapterId, comment = '') {
+    return await httpClient.post(`/api/review/chapters/${chapterId}/approve`, { comment })
+  }
+
+  static async rejectChapter(chapterId, comment) {
+    return await httpClient.post(`/api/review/chapters/${chapterId}/reject`, { comment })
+  }
 }

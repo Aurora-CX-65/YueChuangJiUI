@@ -273,7 +273,35 @@ export default {
      * 处理筛选条件变化
      */
     handleFilterChange(newFilters) {
-      this.filters = { ...this.filters, ...newFilters }
+      // 处理字数筛选转换
+      const filters = { ...newFilters }
+      
+      if (filters.wordCount) {
+        switch (filters.wordCount) {
+          case 'short': // 10万字以下
+            filters.minWordCount = 0
+            filters.maxWordCount = 100000
+            break
+          case 'medium': // 10-50万字
+            filters.minWordCount = 100000
+            filters.maxWordCount = 500000
+            break
+          case 'long': // 50万字以上
+            filters.minWordCount = 500000
+            filters.maxWordCount = null
+            break
+          default:
+            filters.minWordCount = null
+            filters.maxWordCount = null
+        }
+        delete filters.wordCount
+      } else {
+        // 如果清空了字数筛选，也要清空 min/max
+        filters.minWordCount = null
+        filters.maxWordCount = null
+      }
+
+      this.filters = { ...this.filters, ...filters }
       this.currentPage = 1
       this.loadBooks()
     },

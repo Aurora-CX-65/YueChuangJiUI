@@ -46,7 +46,7 @@
               <div class="meta-item">
                 <el-icon><Collection /></el-icon>
                 <span class="label">分类：</span>
-                <el-tag type="info" size="small">{{ book.category?.name || '未分类' }}</el-tag>
+                <el-tag type="info" size="small">{{ book.categoryName || '未分类' }}</el-tag>
               </div>
 
               <div class="meta-item">
@@ -228,7 +228,11 @@
             class="comment-input"
           />
           <div class="comment-actions">
-            <el-rate v-model="newRating" show-text />
+            <el-rate 
+              v-model="newRating" 
+              show-text 
+              :texts="['极差', '失望', '一般', '满意', '惊喜']"
+            />
             <el-button
               type="primary"
               @click="submitComment"
@@ -266,18 +270,30 @@
             :key="comment.id"
             class="comment-item"
           >
-            <div class="comment-avatar">
-              <el-avatar :src="comment.user?.avatar" :size="40">
+            <div class="comment-avatar" @click="goToUser(comment.userId)">
+              <el-avatar :src="comment.avatar" :size="40">
                 <el-icon><User /></el-icon>
               </el-avatar>
             </div>
             <div class="comment-content">
               <div class="comment-header">
-                <span class="comment-author">{{ comment.user?.nickname || comment.user?.username }}</span>
+                <span class="comment-author" @click="goToUser(comment.userId)">{{ comment.nickname || '匿名用户' }}</span>
+                <el-tag 
+                  v-if="userStore.userInfo?.id === comment.userId" 
+                  size="small" 
+                  type="primary" 
+                  effect="plain" 
+                  class="me-tag"
+                >
+                  我
+                </el-tag>
                 <el-rate
                   v-if="comment.rating"
                   :model-value="comment.rating"
                   disabled
+                  show-score
+                  text-color="#ff9900"
+                  score-template="{value}分"
                   size="small"
                   class="comment-rating"
                 />
@@ -317,7 +333,9 @@ import { useUserStore } from '@/stores/user-store.js'
 import { useBookStore } from '@/stores/book-store.js'
 import { useChapterStore } from '@/stores/chapter-store.js'
 import { useCommentStore } from '@/stores/comment-store.js'
+
 import { BookService } from '@/services/book-service.js'
+import { ReadingProgressService } from '@/services/reading-progress-service.js'
 import { ChapterService } from '@/services/chapter-service.js'
 import { CommentService } from '@/services/comment-service.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -491,14 +509,27 @@ const formatTime = (time) => {
 
 const goToAuthor = () => {
   if (book.value?.authorId) {
-    router.push(`/authors/${book.value.authorId}`)
+    router.push(`/users/${book.value.authorId}`)
   }
 }
 
-const startReading = () => {
+const startReading = async () => {
   if (!hasChapters.value) {
     ElMessage.warning('暂无可阅读的章节')
     return
+  }
+  
+  // 尝试获取阅读进度
+  if (userStore.isLoggedIn) {
+    try {
+      const progress = await ReadingProgressService.getReadingProgress(bookId.value)
+      if (progress && progress.chapterId) {
+        router.push(`/books/${bookId.value}/chapters/${progress.chapterId}`)
+        return
+      }
+    } catch (e) {
+      console.error('获取阅读进度失败', e)
+    }
   }
   
   const firstChapter = sortedChapters.value[0]
@@ -634,6 +665,12 @@ const submitComment = async () => {
 
 const goToLogin = () => {
   router.push('/auth/login')
+}
+
+const goToUser = (userId) => {
+  if (userId) {
+    router.push(`/users/${userId}`)
+  }
 }
 
 const goBack = () => {
@@ -957,9 +994,22 @@ watch(() => route.params.id, (newId) => {
   margin-bottom: 8px;
 }
 
+.comment-avatar {
+  cursor: pointer;
+}
+
 .comment-author {
   font-weight: 500;
   color: #303133;
+  cursor: pointer;
+}
+
+.comment-author:hover {
+  color: var(--el-color-primary);
+}
+
+.me-tag {
+  margin-right: 8px;
 }
 
 .comment-rating {

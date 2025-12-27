@@ -65,7 +65,7 @@
           class="filter-select"
         >
           <el-option value="" label="全部状态" />
-          <el-option value="ongoing" label="连载中" />
+          <el-option value="serializing" label="连载中" />
           <el-option value="completed" label="已完结" />
         </el-select>
       </el-form-item>

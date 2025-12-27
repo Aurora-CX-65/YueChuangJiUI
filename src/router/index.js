@@ -46,6 +46,15 @@ const routes = [
         }
       },
       {
+        path: 'books/:bookId/chapters/:chapterId',
+        name: 'ChapterReading',
+        component: () => import('../views/books/ChapterReading.vue'),
+        meta: { 
+          title: '章节阅读',
+          description: '在线阅读书籍章节'
+        }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('../views/ProfileView.vue'),
@@ -63,6 +72,21 @@ const routes = [
           title: '通知中心',
           description: '查看与管理通知',
           requiresAuth: true
+        }
+      },
+      {
+        path: 'users/:id',
+        name: 'UserProfile',
+        component: () => import('../views/UserProfileView.vue'),
+        meta: {
+          title: '用户主页',
+          description: '查看用户公开信息'
+        }
+      },
+      {
+        path: 'authors/:id',
+        redirect: to => {
+          return { name: 'UserProfile', params: { id: to.params.id } }
         }
       }
     ],
@@ -140,7 +164,27 @@ const routes = [
         component: () => import('../views/admin/AdminBooks.vue'),
         meta: {
           title: '书籍管理',
-          description: '管理与审核书籍',
+          description: '管理平台书籍',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'book-reviews',
+        name: 'AdminBookReviews',
+        component: () => import('../views/admin/AdminBookReviews.vue'),
+        meta: {
+          title: '书籍审核',
+          description: '审核作者提交的书籍',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'chapter-reviews',
+        name: 'AdminChapterReviews',
+        component: () => import('../views/admin/AdminChapterReview.vue'),
+        meta: {
+          title: '章节审核',
+          description: '审核作者提交的章节',
           requiresRole: 'admin'
         }
       },
@@ -150,7 +194,17 @@ const routes = [
         component: () => import('../views/admin/AdminComments.vue'),
         meta: {
           title: '评论管理',
-          description: '管理与审核评论',
+          description: '管理平台评论',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'comment-reviews',
+        name: 'AdminCommentReviews',
+        component: () => import('../views/admin/AdminCommentReviews.vue'),
+        meta: {
+          title: '评论审核',
+          description: '审核用户评论',
           requiresRole: 'admin'
         }
       },
@@ -181,6 +235,16 @@ const routes = [
         meta: {
           title: '通知管理',
           description: '管理系统通知',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'logs',
+        name: 'AdminOperationLogs',
+        component: () => import('../views/admin/AdminOperationLogs.vue'),
+        meta: {
+          title: '操作日志',
+          description: '查看系统操作日志',
           requiresRole: 'admin'
         }
       },

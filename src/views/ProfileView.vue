@@ -127,11 +127,44 @@
               </div>
             </el-tab-pane>
 
+            <el-tab-pane label="阅读历史" name="history">
+              <div v-if="loading.history" class="loading-container">
+                <el-skeleton :rows="4" animated />
+              </div>
+              <el-empty v-else-if="readingHistory.length === 0" description="暂无阅读记录" />
+              <div v-else class="history-list">
+                 <div v-for="item in readingHistory" :key="item.id" class="history-item" @click="continueReading(item)">
+                    <div class="history-cover">
+                      <el-image :src="item.bookCover || '/images/default_book_cover.svg'" fit="cover">
+                        <template #error>
+                          <div class="image-slot">
+                            <img src="/images/default_book_cover.svg" alt="默认封面" style="width: 100%; height: 100%; object-fit: cover;" />
+                          </div>
+                        </template>
+                      </el-image>
+                    </div>
+                    <div class="history-info">
+                       <div class="history-title">{{ item.bookTitle }}</div>
+                       <div class="history-chapter">看到：{{ item.chapterTitle || '未知章节' }}</div>
+                       <div class="history-time">
+                         <span>{{ formatDate(item.lastReadAt) }}</span>
+                         <span class="history-progress" v-if="item.progressPercentage">
+                            进度: {{ item.progressPercentage }}%
+                         </span>
+                       </div>
+                    </div>
+                    <div class="history-action">
+                       <el-button type="primary" size="small" round @click.stop="continueReading(item)">继续阅读</el-button>
+                    </div>
+                 </div>
+              </div>
+            </el-tab-pane>
+
             <el-tab-pane label="关注作者" name="following">
               <div v-if="loading.following" class="loading-container">
                 <el-skeleton :rows="4" animated />
               </div>
-              <el-empty v-else-if="following.length === 0" description="暂无关注" />
+              <el-empty v-else-if="following && following.length === 0" description="暂无关注" />
               <div v-else class="user-list">
                 <el-row :gutter="16">
                   <el-col
@@ -219,7 +252,7 @@
           <el-input v-model="editForm.nickname" maxlength="20" show-word-limit />
         </el-form-item>
         <el-form-item label="邮箱">
-          <el-input v-model="editForm.email" />
+          <el-input v-model="editForm.email" disabled />
         </el-form-item>
         <el-form-item label="手机号">
           <el-input v-model="editForm.phone" />
@@ -239,7 +272,9 @@
 <script>
 import { useUserStore } from '@/stores/user-store.js'
 import { useBookStore } from '@/stores/book-store.js'
+import { ReadingProgressService } from '@/services/reading-progress-service.js'
 import BookCard from '@/components/books/BookCard.vue'
+import { formatDate } from '@/utils/formatters'
 
 export default {
   name: 'ProfileView',
@@ -253,12 +288,15 @@ export default {
         myBooks: false,
         favorites: false,
         following: false,
-        followers: false
+        followers: false,
+        history: false
       },
       myBooks: [],
       myBooksPagination: { current: 1, size: 12, total: 0, pages: 0 },
       favoriteBooks: [],
       favoritePagination: { current: 1, size: 12, total: 0, pages: 0 },
+      readingHistory: [],
+      readingHistoryPagination: { current: 1, size: 10, total: 0, pages: 0 },
       following: [],
       followingPagination: { current: 1, size: 12, total: 0, pages: 0 },
       followers: [],
@@ -294,8 +332,73 @@ export default {
         this.loadMyBooks(this.myBooksPagination.current),
         this.loadFavorites(this.favoritePagination.current),
         this.loadFollowing(this.followingPagination.current),
-        this.loadFollowers(this.followersPagination.current)
+        this.loadFollowers(this.followersPagination.current),
+        this.loadReadingHistory(this.readingHistoryPagination.current)
       ])
+    },
+    formatDate,
+    async loadReadingHistory(page = 1) {
+      this.loading.history = true
+      try {
+        const res = await ReadingProgressService.getReadingHistory(page, this.readingHistoryPagination.size)
+        // 注意：getReadingHistory 返回的是 List<Response> 还是 Page 对象？
+        // Controller 返回的是 List<ReadingProgressSummaryResponse>，没有分页信息封装？
+        // 查看 Controller: getReadingProgressSummary 返回 ApiResponse<List<ReadingProgressSummaryResponse>>
+        // 这里似乎丢失了分页元数据（total, pages）。
+        // 暂时假设后端返回的是列表，前端简单处理。
+        // 如果后端 Service 是分页查的，但 Controller 直接返回了 List，那确实少了 total。
+        // 不过根据代码，Service 用了 selectPage，但最后 return progressPage.getRecords()... 
+        // 确实，Controller 直接返回了 List。
+        // 暂时先这样展示。
+        if (res) {
+          this.readingHistory = res
+          // 由于后端未返回分页信息，这里暂时无法设置 total
+        }
+      } finally {
+        this.loading.history = false
+      }
+    },
+    async continueReading(item) {
+      // 实际上后端返回的 summary 并没有 chapterId ? 
+      // 让我们检查一下 ReadingProgressSummaryResponse DTO。
+      // 它有 chapterTitle, bookId, 但没有 chapterId 字段？
+      // 让我们再次检查 DTO。
+      // 如果没有 chapterId，我们需要跳转到 bookDetail 或者先获取 progress 再跳转。
+      // 刚才的 DTO 定义里确实没有 chapterId。
+      // 让我们修改 DTO 或者 fetch progress。
+      // 实际上 ServiceImpl 里：BeanUtils.copyProperties(progress, summary);
+      // ReadingProgress 实体有 chapterId。
+      // 如果 SummaryResponse 没有定义 chapterId，BeanUtils 不会拷贝。
+      // 我需要确认 DTO 是否有 chapterId。
+      // 如果没有，我应该用 bookId 去 fetch progress，或者简单点跳转到书页。
+      // 需求是“点击直接跳转到已经阅读过的章节内容区域”。
+      // 最好是 DTO 里有 chapterId。
+      // 让我们假设 DTO 会被更新，或者我现在去更新 DTO。
+      
+      // 既然我现在在写前端，我先写跳转逻辑。
+      // 如果 item.chapterId 存在。
+      if (item.chapterId) {
+        this.$router.push({ 
+          name: 'ChapterReading', 
+          params: { bookId: item.bookId, chapterId: item.chapterId } 
+        })
+      } else {
+        // Fallback: 此时可能 item 中没有 chapterId
+        // 可以尝试调用 getReadingProgress 获取
+        try {
+           const progress = await ReadingProgressService.getReadingProgress(item.bookId)
+           if (progress && progress.chapterId) {
+             this.$router.push({ 
+                name: 'ChapterReading', 
+                params: { bookId: item.bookId, chapterId: progress.chapterId } 
+             })
+           } else {
+             this.$router.push({ name: 'BookDetail', params: { id: item.bookId } })
+           }
+        } catch(e) {
+           this.$router.push({ name: 'BookDetail', params: { id: item.bookId } })
+        }
+      }
     },
     async loadStats() {
       if (this.userStore.currentUserId) {
@@ -547,6 +650,63 @@ export default {
   font-size: 12px;
   color: #909399;
 }
+
+/* History List Styles */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.history-item:hover {
+  border-color: var(--el-color-primary-light-5);
+  background-color: var(--el-color-primary-light-9);
+}
+.history-cover {
+  width: 60px;
+  height: 80px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.history-cover .el-image {
+  width: 100%;
+  height: 100%;
+}
+.history-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.history-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #303133;
+}
+.history-chapter {
+  font-size: 14px;
+  color: #606266;
+}
+.history-time {
+  font-size: 12px;
+  color: #909399;
+  display: flex;
+  gap: 10px;
+}
+.history-action {
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .profile-view {
     padding: 16px;

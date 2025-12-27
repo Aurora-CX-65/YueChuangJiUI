@@ -19,14 +19,24 @@
             <el-icon><User /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/books">
-            <el-icon><Collection /></el-icon>
-            <span>书籍管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/comments">
-            <el-icon><ChatLineSquare /></el-icon>
-            <span>评论管理</span>
-          </el-menu-item>
+          <el-sub-menu index="books-center">
+            <template #title>
+              <el-icon><Collection /></el-icon>
+              <span>书籍中心</span>
+            </template>
+            <el-menu-item index="/admin/books">书籍管理</el-menu-item>
+            <el-menu-item index="/admin/book-reviews">书籍审核</el-menu-item>
+            <el-menu-item index="/admin/chapter-reviews">章节审核</el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="comments-center">
+            <template #title>
+              <el-icon><ChatLineSquare /></el-icon>
+              <span>评论中心</span>
+            </template>
+            <el-menu-item index="/admin/comments">评论管理</el-menu-item>
+            <el-menu-item index="/admin/comment-reviews">评论审核</el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/admin/categories">
             <el-icon><Menu /></el-icon>
             <span>分类管理</span>
@@ -38,6 +48,10 @@
           <el-menu-item index="/admin/notifications">
             <el-icon><Bell /></el-icon>
             <span>通知管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/logs">
+            <el-icon><Document /></el-icon>
+            <span>操作日志</span>
           </el-menu-item>
           <el-menu-item index="/admin/settings">
             <el-icon><Setting /></el-icon>
@@ -53,10 +67,10 @@
 </template>
 
 <script>
-import { DataAnalysis, User, Collection, ChatLineSquare, Menu, Tickets, Bell, Setting } from '@element-plus/icons-vue'
+import { DataAnalysis, User, Collection, ChatLineSquare, Menu, Tickets, Bell, Setting, Document } from '@element-plus/icons-vue'
 export default {
   name: 'AdminLayout',
-  components: { DataAnalysis, User, Collection, ChatLineSquare, Menu, Tickets, Bell, Setting },
+  components: { DataAnalysis, User, Collection, ChatLineSquare, Menu, Tickets, Bell, Setting, Document },
   computed: {
     activePath() {
       return this.$route.path
