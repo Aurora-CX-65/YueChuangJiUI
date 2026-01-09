@@ -149,12 +149,12 @@ export class AdminService {
     return await httpClient.delete(`/api/admin/books/${id}`)
   }
 
-  static async setBookRecommendStatus(id, isRecommended) {
-    return await httpClient.put(`/api/admin/books/${id}/recommend`, null, { params: { isRecommended } })
-  }
-
   static async updateBookStatus(id, status, reason = '') {
     return await httpClient.put(`/api/admin/books/${id}/status`, { status, reason })
+  }
+
+  static async setBookRecommendStatus(id, isRecommended) {
+    return await httpClient.put(`/api/admin/books/${id}/recommend?isRecommended=${isRecommended}`)
   }
 
   static async batchUpdateBookStatus(bookIds, status, reason = '') {
@@ -200,21 +200,5 @@ export class AdminService {
 
   static async searchBooks(keyword) {
     return await httpClient.get('/api/admin/books/search', { keyword })
-  }
-
-  static async getBookChapters(bookId) {
-    return await httpClient.get(`/api/chapters/book/${bookId}`, { page: 1, size: 1000 })
-  }
-
-  static async getChapterContent(chapterId) {
-    return await httpClient.get(`/api/chapters/${chapterId}`)
-  }
-
-  static async approveChapter(chapterId, comment = '') {
-    return await httpClient.post(`/api/review/chapters/${chapterId}/approve`, { comment })
-  }
-
-  static async rejectChapter(chapterId, comment) {
-    return await httpClient.post(`/api/review/chapters/${chapterId}/reject`, { comment })
   }
 }

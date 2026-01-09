@@ -76,8 +76,8 @@
           </div>
           <div v-if="pendingLoading" class="loading"><el-skeleton :rows="5" animated /></div>
           <el-empty v-else-if="pendingItems.length === 0" description="暂无待审核" />
-          <el-table v-else :data="pendingItems" size="small" border>
-            <el-table-column prop="type" label="类型" width="120" />
+          <el-table v-else :data="pendingItems" border>
+            <el-table-column prop="auditType" label="类型" width="120" />
             <el-table-column prop="title" label="标题" />
             <el-table-column prop="submitterName" label="提交人" width="140" />
             <el-table-column prop="createdAt" label="提交时间" width="180" />
@@ -101,11 +101,11 @@
           <div v-if="historyLoading" class="loading"><el-skeleton :rows="5" animated /></div>
           <el-empty v-else-if="reviewHistory.length === 0" description="暂无历史记录" />
           <el-table v-else :data="reviewHistory" size="small" border>
-            <el-table-column prop="type" label="类型" width="120" />
-            <el-table-column prop="title" label="标题" />
-            <el-table-column prop="auditorName" label="审核员" width="140" />
+            <el-table-column prop="auditType" label="类型" width="120" />
+            <el-table-column prop="targetTitle" label="标题" />
+            <el-table-column prop="auditorUsername" label="审核员" width="140" />
             <el-table-column prop="result" label="结果" width="120" />
-            <el-table-column prop="createdAt" label="审核时间" width="180" />
+            <el-table-column prop="auditedAt" label="审核时间" width="180" />
           </el-table>
         </el-card>
       </el-col>

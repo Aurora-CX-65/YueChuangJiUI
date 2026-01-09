@@ -210,26 +210,14 @@ class HttpClient {
    * PUT请求
    * @param {string} url 请求URL
    * @param {Object} data 请求数据
-   * @param {Object} options 额外选项 (如 { params: {} })
+   * @param {Object} options 额外选项
    * @returns {Promise} 响应数据
    */
   async put(url, data = {}, options = {}) {
-    const originalOptions = { ...options }
-    let requestUrl = url
-
-    // 如果有查询参数，拼接到URL
-    if (originalOptions.params) {
-      const queryString = new URLSearchParams(originalOptions.params).toString()
-      if (queryString) {
-        requestUrl = `${url}?${queryString}`
-      }
-      delete originalOptions.params
-    }
-
-    return this.request(requestUrl, {
+    return this.request(url, {
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined, // data 为 null 时不传 body
-      ...originalOptions
+      body: JSON.stringify(data),
+      ...options
     })
   }
 

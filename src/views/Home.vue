@@ -220,23 +220,10 @@ export default {
     const fetchHotBooks = async () => {
       try {
         booksLoading.value = true
-        const response = await BookService.getHotBooks()
-        // 拦截器已经解包了 response.data，所以 response 本身就是数据列表
-        // 或者 response.data 是数据列表（取决于后端返回结构）
-        // 兼容处理：检查 response 是否为数组，或者 response.data 是否为数组
-        let books = []
-        if (Array.isArray(response)) {
-          books = response
-        } else if (response && Array.isArray(response.data)) {
-          books = response.data
-        } else if (response && response.records && Array.isArray(response.records)) {
-           // 处理分页结构
-           books = response.records
-        }
-        
-        if (books.length > 0) {
+        const data = await BookService.getHotBooks()
+        if (Array.isArray(data)) {
           // 限制显示数量为10本（两排，每排5本）
-          hotBooks.value = books.slice(0, 10)
+          hotBooks.value = data.slice(0, 10)
         } else {
           hotBooks.value = []
         }

@@ -179,16 +179,6 @@ const routes = [
         }
       },
       {
-        path: 'chapter-reviews',
-        name: 'AdminChapterReviews',
-        component: () => import('../views/admin/AdminChapterReview.vue'),
-        meta: {
-          title: '章节审核',
-          description: '审核作者提交的章节',
-          requiresRole: 'admin'
-        }
-      },
-      {
         path: 'comments',
         name: 'AdminComments',
         component: () => import('../views/admin/AdminComments.vue'),
