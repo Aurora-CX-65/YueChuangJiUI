@@ -1,7 +1,7 @@
 <template>
   <div class="author-dashboard">
     <el-row :gutter="20">
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
@@ -11,7 +11,7 @@
           <div class="stat-value">{{ formatNumber(stats.totalWords) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
@@ -21,7 +21,7 @@
           <div class="stat-value">{{ stats.bookCount }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
@@ -29,16 +29,6 @@
             </div>
           </template>
           <div class="stat-value">{{ stats.totalCollections }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>总收益</span>
-            </div>
-          </template>
-          <div class="stat-value">¥0.00</div>
         </el-card>
       </el-col>
     </el-row>
@@ -75,6 +65,7 @@
 <script>
 import { useUserStore } from '@/stores/user-store'
 import { useBookStore } from '@/stores/book-store'
+import { UserService } from '@/services/user-service'
 import { formatDate } from '@/utils/formatters'
 
 export default {
@@ -99,19 +90,27 @@ export default {
   },
   methods: {
     async init() {
-      // 模拟加载数据，后续可以对接真实API
       if (this.userStore.currentUserId) {
-        // 加载作者的书籍列表作为最近更新
         try {
+          // 获取作者统计信息
+          const stats = await UserService.getUserStats(this.userStore.currentUserId)
+          if (stats) {
+            this.stats.bookCount = stats.bookCount || 0
+            this.stats.totalWords = stats.totalWordCount || 0
+            this.stats.totalCollections = stats.collectionCount || 0
+          }
+
+          // 加载作者的书籍列表作为最近更新
           const res = await this.bookStore.fetchBooksByAuthor(this.userStore.currentUserId, 1, 5)
           if (res && res.records) {
             this.recentBooks = res.records
-            this.stats.bookCount = res.total
-            // 简单统计
-            this.stats.totalWords = this.userStore.totalWordCount || 0
+            // 如果接口返回了书籍总数且统计接口为0（异常情况），则使用列表总数
+            if (this.stats.bookCount === 0 && res.total > 0) {
+              this.stats.bookCount = res.total
+            }
           }
         } catch (e) {
-          console.error(e)
+          console.error('初始化作者看板失败:', e)
         }
       }
     },

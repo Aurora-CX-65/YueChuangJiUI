@@ -79,7 +79,7 @@
                     :sm="12"
                     :xs="24"
                   >
-                    <BookCard :book="book" />
+                    <BookCard :book="book" :custom-link="`/author/books/${book.id}/chapters`" />
                   </el-col>
                 </el-row>
                 <div v-if="myBooksPagination.pages > 1" class="pagination">
@@ -365,64 +365,28 @@ export default {
     async loadReadingHistory(page = 1) {
       this.loading.history = true
       try {
-        const res = await ReadingProgressService.getReadingHistory(page, this.readingHistoryPagination.size)
-        // 注意：getReadingHistory 返回的是 List<Response> 还是 Page 对象？
-        // Controller 返回的是 List<ReadingProgressSummaryResponse>，没有分页信息封装？
-        // 查看 Controller: getReadingProgressSummary 返回 ApiResponse<List<ReadingProgressSummaryResponse>>
-        // 这里似乎丢失了分页元数据（total, pages）。
-        // 暂时假设后端返回的是列表，前端简单处理。
-        // 如果后端 Service 是分页查的，但 Controller 直接返回了 List，那确实少了 total。
-        // 不过根据代码，Service 用了 selectPage，但最后 return progressPage.getRecords()... 
-        // 确实，Controller 直接返回了 List。
-        // 暂时先这样展示。
+        const res = await this.chapterStore.fetchReadingHistory(page, this.readingHistoryPagination.size)
         if (res) {
-          this.readingHistory = res
-          // 由于后端未返回分页信息，这里暂时无法设置 total
+          this.readingHistory = res.records || []
+          this.readingHistoryPagination.current = res.current || page
+          this.readingHistoryPagination.size = res.size || this.readingHistoryPagination.size
+          this.readingHistoryPagination.total = res.total || 0
+          this.readingHistoryPagination.pages = res.pages || 0
         }
       } finally {
         this.loading.history = false
       }
     },
     async continueReading(item) {
-      // 实际上后端返回的 summary 并没有 chapterId ? 
-      // 让我们检查一下 ReadingProgressSummaryResponse DTO。
-      // 它有 chapterTitle, bookId, 但没有 chapterId 字段？
-      // 让我们再次检查 DTO。
-      // 如果没有 chapterId，我们需要跳转到 bookDetail 或者先获取 progress 再跳转。
-      // 刚才的 DTO 定义里确实没有 chapterId。
-      // 让我们修改 DTO 或者 fetch progress。
-      // 实际上 ServiceImpl 里：BeanUtils.copyProperties(progress, summary);
-      // ReadingProgress 实体有 chapterId。
-      // 如果 SummaryResponse 没有定义 chapterId，BeanUtils 不会拷贝。
-      // 我需要确认 DTO 是否有 chapterId。
-      // 如果没有，我应该用 bookId 去 fetch progress，或者简单点跳转到书页。
-      // 需求是“点击直接跳转到已经阅读过的章节内容区域”。
-      // 最好是 DTO 里有 chapterId。
-      // 让我们假设 DTO 会被更新，或者我现在去更新 DTO。
-      
-      // 既然我现在在写前端，我先写跳转逻辑。
-      // 如果 item.chapterId 存在。
+      // 尝试跳转到阅读页
       if (item.chapterId) {
         this.$router.push({ 
           name: 'ChapterReading', 
           params: { bookId: item.bookId, chapterId: item.chapterId } 
         })
       } else {
-        // Fallback: 此时可能 item 中没有 chapterId
-        // 可以尝试调用 getReadingProgress 获取
-        try {
-           const progress = await ReadingProgressService.getReadingProgress(item.bookId)
-           if (progress && progress.chapterId) {
-             this.$router.push({ 
-                name: 'ChapterReading', 
-                params: { bookId: item.bookId, chapterId: progress.chapterId } 
-             })
-           } else {
-             this.$router.push({ name: 'BookDetail', params: { id: item.bookId } })
-           }
-        } catch(e) {
-           this.$router.push({ name: 'BookDetail', params: { id: item.bookId } })
-        }
+        // Fallback: 如果没有chapterId，跳转到书籍详情
+        this.$router.push(`/books/${item.bookId}`)
       }
     },
     async loadStats() {

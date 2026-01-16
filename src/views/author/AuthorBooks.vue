@@ -20,7 +20,7 @@
       <div v-else class="book-list">
         <div v-for="book in books" :key="book.id" class="book-item">
           <div class="book-cover">
-            <img :src="book.coverUrl || '/images/default_book_cover.svg'" alt="封面">
+            <img :src="book.coverImage || '/images/default_book_cover.svg'" alt="封面">
           </div>
           <div class="book-info">
             <div class="book-title-row">
@@ -45,7 +45,10 @@
               <el-button icon="More" circle class="ml-2"></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-if="book.status === 'draft'" command="publish">提交发布</el-dropdown-item>
+                  <el-dropdown-item command="characters">角色管理</el-dropdown-item>
+                  <el-dropdown-item command="outlines">大纲管理</el-dropdown-item>
+                  <el-dropdown-item command="timelines">时间线管理</el-dropdown-item>
+                  <el-dropdown-item divided v-if="book.status === 'draft'" command="submit_review">提交审核</el-dropdown-item>
                   <el-dropdown-item v-if="book.status === 'serializing'" command="complete">标记完结</el-dropdown-item>
                   <el-dropdown-item v-if="book.status === 'completed'" command="serialize">转为连载</el-dropdown-item>
                   <el-dropdown-item command="delete" style="color: #f56c6c">删除书籍</el-dropdown-item>
@@ -143,8 +146,26 @@ export default {
       }
       return map[status] || ''
     },
-    handleCommand(cmd, book) {
-      if (cmd === 'delete') {
+    async handleCommand(cmd, book) {
+      if (cmd === 'characters') {
+        this.$router.push(`/author/books/${book.id}/characters`)
+      } else if (cmd === 'outlines') {
+        this.$router.push(`/author/books/${book.id}/outlines`)
+      } else if (cmd === 'timelines') {
+        this.$router.push(`/author/books/${book.id}/timelines`)
+      } else if (cmd === 'submit_review') {
+        try {
+          await ElMessageBox.confirm('确定要提交审核吗？审核通过后将变为连载/已发布状态。', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'info'
+          })
+          await this.bookStore.submitBookForReview(book.id)
+          this.loadBooks()
+        } catch (e) {
+          if (e !== 'cancel') console.error(e)
+        }
+      } else if (cmd === 'delete') {
         ElMessageBox.confirm(
           '删除后无法恢复，确定要删除这本书吗？',
           '警告',
@@ -154,9 +175,8 @@ export default {
             type: 'warning'
           }
         ).then(async () => {
-          // TODO: Implement delete API in BookStore
-          // await this.bookStore.deleteBook(book.id)
-          ElMessage.warning('暂未实现删除功能')
+          await this.bookStore.deleteBook(book.id)
+          this.loadBooks()
         }).catch(() => {})
       }
     }

@@ -18,9 +18,14 @@
 
     <!-- 侧边工具栏 -->
     <div class="side-toolbar">
-      <el-tooltip content="目录" placement="left">
+      <el-tooltip content="目录/书签" placement="left">
         <div class="toolbar-item" @click="showCatalog = true">
           <el-icon><List /></el-icon>
+        </div>
+      </el-tooltip>
+      <el-tooltip content="添加书签" placement="left">
+        <div class="toolbar-item" @click="handleAddBookmark">
+          <el-icon><Collection /></el-icon>
         </div>
       </el-tooltip>
       <el-tooltip content="设置" placement="left">
@@ -94,7 +99,7 @@
 
       <div v-else-if="chapter" class="chapter-content">
         <div class="chapter-header">
-          <h1 class="chapter-title">{{ chapter.title }}</h1>
+          <h1 class="chapter-title">第{{ chapter.sortOrder }}章 {{ chapter.title }}</h1>
           <div class="chapter-meta">
             <span>{{ chapter.wordCount || 0 }} 字</span>
             <span class="separator">·</span>
@@ -131,26 +136,60 @@
       </div>
     </div>
 
-    <!-- 目录抽屉 -->
+    <!-- 目录/书签抽屉 -->
     <el-drawer
       v-model="showCatalog"
-      title="目录"
+      :title="null"
+      :with-header="false"
       direction="ltr"
-      size="300px"
+      size="320px"
       :append-to-body="true"
+      class="catalog-drawer"
     >
-      <div class="catalog-list">
-        <div 
-          v-for="item in chaptersList" 
-          :key="item.id"
-          class="catalog-item"
-          :class="{ active: item.id == chapterId }"
-          @click="goToChapter(item.id)"
-        >
-          <span class="chapter-name">{{ item.title }}</span>
-          <el-tag size="small" v-if="item.status === 'vip'" type="warning">VIP</el-tag>
-        </div>
-      </div>
+      <el-tabs v-model="activeTab" stretch class="catalog-tabs">
+        <el-tab-pane label="目录" name="catalog">
+          <div class="catalog-list">
+            <div 
+              v-for="item in chaptersList" 
+              :key="item.id"
+              class="catalog-item"
+              :class="{ active: item.id == chapterId }"
+              @click="goToChapter(item.id)"
+            >
+              <span class="chapter-name">{{ item.sortOrder }}. {{ item.title }}</span>
+              <el-tag size="small" v-if="item.status === 'vip'" type="warning">VIP</el-tag>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="书签" name="bookmark">
+          <div class="bookmark-list" v-if="bookmarks.length > 0">
+            <div 
+              v-for="item in bookmarks" 
+              :key="item.id"
+              class="bookmark-item"
+              @click="goToBookmark(item)"
+            >
+              <div class="bookmark-info">
+                <div class="bookmark-chapter">{{ item.chapterTitle }}</div>
+                <div class="bookmark-meta">
+                  <span class="bookmark-time">{{ formatDate(item.createdAt) }}</span>
+                  <span class="bookmark-progress">{{ getProgressText(item) }}</span>
+                </div>
+                <div class="bookmark-note" v-if="item.note">{{ item.note }}</div>
+              </div>
+              <el-button 
+                link 
+                type="danger" 
+                class="delete-btn"
+                @click.stop="handleDeleteBookmark(item)"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          <el-empty v-else description="暂无书签" />
+        </el-tab-pane>
+      </el-tabs>
     </el-drawer>
   </div>
 </template>
@@ -162,11 +201,13 @@ import { ChapterService } from '@/services/chapter-service';
 import { BookService } from '@/services/book-service'; // 假设有这个服务来获取书名
 import { ElMessage } from 'element-plus';
 import { ReadingProgressService } from '@/services/reading-progress-service.js';
+import { BookmarkService } from '@/services/bookmark-service.js';
 import { 
   ArrowLeft, List, Setting, Sunny, Moon, Check, 
-  Remove, CirclePlus 
+  Remove, CirclePlus, Collection, Delete
 } from '@element-plus/icons-vue';
 import { formatDate } from '@/utils/formatters';
+import { ElMessageBox } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
@@ -176,10 +217,12 @@ const loading = ref(false);
 const error = ref(null);
 const chapter = ref(null);
 const chaptersList = ref([]);
+const bookmarks = ref([]);
 const bookTitle = ref('');
 const showMenu = ref(false);
 const showSettings = ref(false);
 const showCatalog = ref(false);
+const activeTab = ref('catalog'); // catalog or bookmark
 
 const bookId = computed(() => route.params.bookId);
 const chapterId = computed(() => route.params.chapterId);
@@ -284,6 +327,16 @@ const fetchChapter = async () => {
     const data = await ChapterService.getChapterById(chapterId.value);
     if (data) {
       chapter.value = data;
+      
+      // 处理滚动位置
+      setTimeout(() => {
+        const queryPos = route.query.position;
+        if (queryPos) {
+           window.scrollTo({ top: Number(queryPos), behavior: 'smooth' });
+        } else {
+           window.scrollTo(0, 0);
+        }
+      }, 100);
     } else {
       throw new Error('章节内容为空');
     }
@@ -311,6 +364,83 @@ const fetchChaptersList = async () => {
   } catch (err) {
     console.error('Failed to fetch chapter list:', err);
   }
+};
+
+const fetchBookmarks = async () => {
+  if (!bookId.value) return;
+  try {
+    const data = await BookmarkService.getBookBookmarks(bookId.value);
+    bookmarks.value = data || [];
+  } catch (err) {
+    console.error('Failed to fetch bookmarks:', err);
+  }
+};
+
+const handleAddBookmark = async () => {
+  if (!chapterId.value) return;
+  
+  try {
+    // 获取当前滚动位置
+    const position = Math.floor(window.scrollY || 0);
+    // 获取当前章节内容摘要（可选，这里简单取前几个字作为note，或者让用户输入）
+    // 为了更好的体验，可以弹窗让用户输入备注
+    
+    ElMessageBox.prompt('请输入书签备注（可选）', '添加书签', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPattern: /^.{0,50}$/,
+      inputErrorMessage: '备注不能超过50个字'
+    }).then(async ({ value }) => {
+      await BookmarkService.addBookmark({
+        bookId: bookId.value,
+        chapterId: chapterId.value,
+        position: position,
+        note: value || ''
+      });
+      ElMessage.success('书签添加成功');
+      // 刷新书签列表
+      fetchBookmarks();
+    }).catch(() => {
+      // 取消操作
+    });
+  } catch (err) {
+    console.error('Failed to add bookmark:', err);
+    ElMessage.error('添加书签失败');
+  }
+};
+
+const handleDeleteBookmark = async (item) => {
+  try {
+    await BookmarkService.deleteBookmark(item.id);
+    ElMessage.success('删除成功');
+    // 从列表中移除
+    bookmarks.value = bookmarks.value.filter(b => b.id !== item.id);
+  } catch (err) {
+    console.error('Failed to delete bookmark:', err);
+    ElMessage.error('删除失败');
+  }
+};
+
+const goToBookmark = (item) => {
+  if (String(item.chapterId) === String(chapterId.value)) {
+    // 同一章，直接滚动
+    window.scrollTo({ top: item.position, behavior: 'smooth' });
+    showCatalog.value = false;
+  } else {
+    // 跳转到新章节，并携带位置参数
+    router.push({ 
+      name: 'ChapterReading', 
+      params: { bookId: bookId.value, chapterId: item.chapterId },
+      query: { position: item.position }
+    });
+    showCatalog.value = false;
+  }
+};
+
+const getProgressText = (item) => {
+  // 可以根据位置计算百分比，但需要知道章节总高度，这里简单显示位置
+  // 或者如果后端返回了章节进度百分比更好
+  return `位置: ${item.position}`;
 };
 
 const prevChapter = () => {
@@ -390,6 +520,7 @@ onMounted(() => {
   loadSettings();
   fetchChapter();
   fetchChaptersList();
+  fetchBookmarks();
   window.addEventListener('keydown', handleKeydown);
   // 重置计时器
   startTime = Date.now();
@@ -433,7 +564,6 @@ watch(() => route.params.chapterId, async (newId, oldId) => {
   }
   if (newId) {
     fetchChapter();
-    window.scrollTo(0, 0);
     // 重置计时器
     startTime = Date.now();
   }
@@ -667,8 +797,24 @@ watch(() => route.params.chapterId, async (newId, oldId) => {
   height: 40px;
 }
 
-/* 目录列表 */
-.catalog-list {
+/* 目录/书签列表 */
+.catalog-drawer :deep(.el-drawer__body) {
+  padding: 0;
+}
+
+.catalog-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.catalog-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.catalog-list, .bookmark-list {
   padding: 10px 0;
 }
 
@@ -696,6 +842,61 @@ watch(() => route.params.chapterId, async (newId, oldId) => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 200px;
+}
+
+.bookmark-item {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.bookmark-item:hover {
+  background-color: #f5f7fa;
+}
+
+.bookmark-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.bookmark-chapter {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-meta {
+  font-size: 12px;
+  color: #909399;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.bookmark-note {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.delete-btn {
+  padding: 4px;
+  margin-left: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.bookmark-item:hover .delete-btn {
+  opacity: 1;
 }
 
 /* 动画 */

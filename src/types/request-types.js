@@ -125,7 +125,7 @@
  * @property {string} title - 章节标题
  * @property {string} content - 章节内容
  * @property {number} bookId - 书籍ID
- * @property {number} [orderNum] - 章节序号
+ * @property {number} [sortOrder] - 章节序号
  */
 
 /**
@@ -133,7 +133,7 @@
  * @typedef {Object} ChapterUpdateRequest
  * @property {string} [title] - 章节标题
  * @property {string} [content] - 章节内容
- * @property {number} [orderNum] - 章节序号
+ * @property {number} [sortOrder] - 章节序号
  * @property {string} [status] - 章节状态
  */
 

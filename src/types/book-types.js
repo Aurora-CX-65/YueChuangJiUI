@@ -92,12 +92,12 @@
  * @property {string} bookTitle - 书籍标题
  * @property {number} authorId - 作者ID
  * @property {string} authorName - 作者昵称
- * @property {number} orderNum - 章节序号
+ * @property {number} sortOrder - 章节序号
  * @property {number} wordCount - 字数
  * @property {number} viewCount - 阅读量
  * @property {string} status - 章节状态 (draft/pending_review/published)
- * @property {string} createdTime - 创建时间
- * @property {string} updatedTime - 更新时间
+ * @property {string} createdAt - 创建时间
+ * @property {string} updatedAt - 更新时间
  */
 
 /**
@@ -106,7 +106,7 @@
  * @property {string} title - 章节标题
  * @property {string} content - 章节内容
  * @property {number} bookId - 书籍ID
- * @property {number} [orderNum] - 章节序号
+ * @property {number} [sortOrder] - 章节序号
  */
 
 /**
@@ -114,7 +114,7 @@
  * @typedef {Object} ChapterUpdateRequest
  * @property {string} [title] - 章节标题
  * @property {string} [content] - 章节内容
- * @property {number} [orderNum] - 章节序号
+ * @property {number} [sortOrder] - 章节序号
  * @property {string} [status] - 章节状态
  */
 

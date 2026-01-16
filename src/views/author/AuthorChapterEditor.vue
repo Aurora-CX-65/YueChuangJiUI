@@ -9,6 +9,7 @@
           </div>
           <div class="actions">
             <el-button @click="$router.back()">返回</el-button>
+            <el-button v-if="isEdit" @click="versionDrawerVisible = true">历史版本</el-button>
             <el-button type="primary" :loading="saving" @click="saveChapter('draft')">保存草稿</el-button>
             <el-button type="success" :loading="saving" @click="saveChapter('published')">发布章节</el-button>
           </div>
@@ -69,6 +70,36 @@
         <el-button type="primary" @click="applyAiResult">采纳并应用</el-button>
       </template>
     </el-dialog>
+
+    <!-- 历史版本抽屉 -->
+    <el-drawer
+      v-model="versionDrawerVisible"
+      title="历史版本"
+      direction="rtl"
+      size="400px"
+    >
+      <div v-if="versionsLoading" class="loading">
+        <el-skeleton :rows="3" animated />
+      </div>
+      <el-empty v-else-if="versions.length === 0" description="暂无历史版本" />
+      <el-timeline v-else>
+        <el-timeline-item
+          v-for="version in versions"
+          :key="version.id"
+          :timestamp="formatDateTime(version.createdAt)"
+          placement="top"
+        >
+          <el-card class="version-card">
+            <h4>{{ version.versionNote || '自动保存' }}</h4>
+            <p>字数: {{ version.wordCount }}</p>
+            <el-button type="primary" size="small" @click="restoreVersion(version)">恢复此版本</el-button>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+      <div class="drawer-footer mt-4">
+        <el-button @click="loadVersions">刷新列表</el-button>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -79,8 +110,10 @@ import { useChapterStore } from '@/stores/chapter-store'
 import { useBookStore } from '@/stores/book-store'
 import { AiService } from '@/services/ai-service'
 import { MagicStick, Edit } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import SelfHostedTinyEditor from '@/components/editor/SelfHostedTinyEditor.vue'
+import { formatDate } from '@/utils/formatters'
+import { ChapterService } from '@/services/chapter-service'
 
 export default {
   name: 'AuthorChapterEditor',
@@ -103,6 +136,11 @@ export default {
     const aiDialogTitle = ref('')
     const aiResult = ref('')
     const aiActionType = ref('') // 'correct' or 'continue'
+
+    // 版本控制相关
+    const versionDrawerVisible = ref(false)
+    const versionsLoading = ref(false)
+    const versions = ref([])
 
     const form = reactive({
       title: '',
@@ -160,8 +198,10 @@ export default {
           const chapter = await chapterStore.fetchChapterById(chapterId)
           if (chapter) {
             form.title = chapter.title
-            form.orderNum = chapter.orderNum
+            form.orderNum = chapter.sortOrder
             form.content = chapter.content || ''
+            // 加载版本历史
+            loadVersions()
           }
         } else {
           // 创建模式，自动计算下一个序号
@@ -169,7 +209,7 @@ export default {
           await chapterStore.fetchChaptersByBook(bookId)
           const chapters = chapterStore.getChaptersByBookId(bookId).items
           if (chapters.length > 0) {
-            const maxOrder = Math.max(...chapters.map(c => c.orderNum))
+            const maxOrder = Math.max(...chapters.map(c => c.sortOrder))
             form.orderNum = maxOrder + 1
           }
         }
@@ -178,6 +218,43 @@ export default {
         ElMessage.error('初始化失败')
       } finally {
         loading.value = false
+      }
+    }
+
+    const loadVersions = async () => {
+      if (!isEdit) return
+      versionsLoading.value = true
+      try {
+        const res = await ChapterService.getChapterVersions(chapterId)
+        versions.value = res || []
+      } catch (e) {
+        console.error(e)
+      } finally {
+        versionsLoading.value = false
+      }
+    }
+
+    const restoreVersion = async (version) => {
+      try {
+        await ElMessageBox.confirm('确定要恢复到此版本吗？当前未保存的内容将丢失。', '警告', {
+          confirmButtonText: '确定恢复',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        await ChapterService.restoreChapterVersion(chapterId, version.id)
+        ElMessage.success('版本恢复成功')
+        // 重新加载章节内容
+        const chapter = await chapterStore.fetchChapterById(chapterId)
+        if (chapter) {
+          form.title = chapter.title
+          form.content = chapter.content
+        }
+        versionDrawerVisible.value = false
+      } catch (e) {
+        if (e !== 'cancel') {
+          ElMessage.error('恢复失败')
+        }
       }
     }
 
@@ -196,18 +273,40 @@ export default {
               bookId,
               title: form.title,
               content: form.content,
-              orderNum: form.orderNum,
-              status
+              sortOrder: form.orderNum, // 后端字段名为 sortOrder
+              status,
+              createVersion: true, // 每次保存都创建版本
+              versionNote: '用户手动保存'
             }
 
             if (isEdit) {
-              await chapterStore.updateChapter(chapterId, data)
-              ElMessage.success('章节更新成功')
+              if (status === 'pending_review') {
+                  // 如果是提交审核，调用 submit 接口（因为 update 接口不再支持变更状态为 published/pending）
+                  // 先保存内容
+                  await chapterStore.updateChapter(chapterId, { ...data, status: 'draft' })
+                  // 再提交审核
+                  await chapterStore.submitChapterForReview(chapterId)
+                  ElMessage.success('章节已提交审核')
+              } else {
+                  await chapterStore.updateChapter(chapterId, data)
+                  ElMessage.success('章节更新成功')
+              }
+              loadVersions() // 刷新版本列表
             } else {
-              await chapterStore.createChapter(data)
-              ElMessage.success('章节创建成功')
+              // 创建时 status 默认为 draft，如果用户点击提交审核，需要在创建后调用 submit
+              const realStatus = status === 'pending_review' ? 'draft' : status
+              const newChapter = await chapterStore.createChapter({ ...data, status: realStatus })
+              
+              if (status === 'pending_review' && newChapter) {
+                  await chapterStore.submitChapterForReview(newChapter.id)
+                  ElMessage.success('章节创建并提交审核成功')
+              } else {
+                  ElMessage.success('章节创建成功')
+              }
             }
-            router.push(`/author/books/${bookId}/chapters`)
+            if (!isEdit) {
+                router.push(`/author/books/${bookId}/chapters`)
+            }
           } catch (error) {
             console.error(error)
           } finally {
@@ -291,6 +390,8 @@ export default {
         }
         aiDialogVisible.value = false
     }
+    
+    const formatDateTime = (val) => formatDate(val)
 
     return {
       isEdit,
@@ -309,7 +410,13 @@ export default {
       aiDialogVisible,
       aiDialogTitle,
       aiResult,
-      applyAiResult
+      applyAiResult,
+      versionDrawerVisible,
+      versionsLoading,
+      versions,
+      loadVersions,
+      restoreVersion,
+      formatDateTime
     }
   }
 }
@@ -360,5 +467,18 @@ export default {
   max-height: 400px;
   overflow-y: auto;
   line-height: 1.6;
+}
+
+.version-card {
+  margin-bottom: 10px;
+}
+.version-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+.version-card p {
+  margin: 0 0 8px 0;
+  color: #909399;
+  font-size: 12px;
 }
 </style>

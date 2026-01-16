@@ -187,6 +187,24 @@ const routes = [
         meta: { title: '作者中心 - 章节管理', requiresRole: 'author' }
       },
       {
+        path: 'books/:id/characters',
+        name: 'AuthorCharacterManager',
+        component: () => import('../views/author/AuthorCharacterManager.vue'),
+        meta: { title: '作者中心 - 角色管理', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/outlines',
+        name: 'AuthorOutlineManager',
+        component: () => import('../views/author/AuthorOutlineManager.vue'),
+        meta: { title: '作者中心 - 大纲管理', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/timelines',
+        name: 'AuthorTimelineManager',
+        component: () => import('../views/author/AuthorTimelineManager.vue'),
+        meta: { title: '作者中心 - 时间线管理', requiresRole: 'author' }
+      },
+      {
         path: 'books/:id/chapters/create',
         name: 'AuthorChapterCreate',
         component: () => import('../views/author/AuthorChapterEditor.vue'),
@@ -253,6 +271,16 @@ const routes = [
         meta: {
           title: '书籍审核',
           description: '审核作者提交的书籍',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'chapter-reviews',
+        name: 'AdminChapterReviews',
+        component: () => import('../views/admin/AdminChapterReviews.vue'),
+        meta: {
+          title: '章节审核',
+          description: '审核作者提交的章节',
           requiresRole: 'admin'
         }
       },

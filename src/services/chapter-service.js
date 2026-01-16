@@ -88,4 +88,32 @@ export class ChapterService {
   static async unpublishChapter(chapterId) {
     return await httpClient.post(`/api/chapters/${chapterId}/unpublish`)
   }
+
+  /**
+   * 提交章节审核
+   * @param {number} chapterId - 章节ID
+   * @returns {Promise<boolean>} 提交结果
+   */
+  static async submitChapterForReview(chapterId) {
+    return await httpClient.post(`/api/chapters/${chapterId}/submit-review`)
+  }
+
+  /**
+   * 获取章节版本历史
+   * @param {number} chapterId - 章节ID
+   * @returns {Promise<Array>} 版本历史列表
+   */
+  static async getChapterVersions(chapterId) {
+    return await httpClient.get(`/api/chapters/${chapterId}/versions`)
+  }
+
+  /**
+   * 恢复章节版本
+   * @param {number} chapterId - 章节ID
+   * @param {number} versionId - 版本ID
+   * @returns {Promise<boolean>} 恢复结果
+   */
+  static async restoreChapterVersion(chapterId, versionId) {
+    return await httpClient.post(`/api/chapters/${chapterId}/versions/${versionId}/restore`)
+  }
 }

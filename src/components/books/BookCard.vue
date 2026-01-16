@@ -101,6 +101,10 @@ export default {
     listView: {
       type: Boolean,
       default: false
+    },
+    customLink: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -196,7 +200,11 @@ export default {
      * 跳转到书籍详情页
      */
     goToBookDetail() {
-      this.$router.push(`/books/${this.book.id}`)
+      if (this.customLink) {
+        this.$router.push(this.customLink)
+      } else {
+        this.$router.push(`/books/${this.book.id}`)
+      }
     },
 
     /**

@@ -345,6 +345,41 @@ export const useBookStore = defineStore('book', {
     },
 
     /**
+     * 获取我的书籍
+     * @param {number} authorId - 作者ID
+     * @param {number} [page=1] - 页码
+     * @param {number} [size=10] - 每页大小
+     * @param {boolean} [append=false] - 是否追加到现有列表
+     */
+    async fetchMyBooks(authorId, page = 1, size = 10, append = false) {
+      try {
+        this.myBooks.loading = true
+        this.myBooks.error = null
+        
+        const response = await BookService.getBooksByAuthor(authorId, page, size)
+        
+        if (response) {
+          if (append && page > 1) {
+            this.myBooks.items = [...this.myBooks.items, ...response.records]
+          } else {
+            this.myBooks.items = response.records
+          }
+          this.updateMyBooksPagination(response)
+        }
+        
+        this.myBooks.loading = false
+        this.myBooks.lastUpdated = new Date().toISOString()
+        
+        return response
+      } catch (error) {
+        this.myBooks.error = error.message
+        this.myBooks.loading = false
+        this.handleError(error, '获取我的书籍')
+        throw error
+      }
+    },
+
+    /**
      * 根据作者获取书籍
      * @param {number} authorId - 作者ID
      * @param {number} [page=1] - 页码
@@ -702,6 +737,35 @@ export const useBookStore = defineStore('book', {
     },
 
     /**
+     * 提交书籍审核
+     * @param {number} bookId - 书籍ID
+     */
+    async submitBookForReview(bookId) {
+      try {
+        const result = await BookService.submitBookForReview(bookId)
+        
+        if (result) {
+          // 更新列表中的书籍状态
+          this.updateBookInLists(bookId, { status: 'pending_review' })
+          
+          // 更新当前书籍状态
+          if (this.currentBook.item?.id === bookId) {
+            this.currentBook.item.status = 'pending_review'
+          }
+          
+          if (window.notificationManager) {
+            window.notificationManager.success('已提交审核')
+          }
+        }
+        
+        return result
+      } catch (error) {
+        this.handleError(error, '提交审核')
+        throw error
+      }
+    },
+
+    /**
      * 上传书籍封面
      * @param {number} bookId - 书籍ID
      * @param {File} file - 封面文件
@@ -939,6 +1003,15 @@ export const useBookStore = defineStore('book', {
         this.favoriteBooks.pagination.size = paginationData.size || 10
         this.favoriteBooks.pagination.total = paginationData.total || 0
         this.favoriteBooks.pagination.pages = Math.ceil(this.favoriteBooks.pagination.total / this.favoriteBooks.pagination.size)
+      }
+    },
+
+    updateMyBooksPagination(paginationData) {
+      if (paginationData) {
+        this.myBooks.pagination.current = paginationData.current || 1
+        this.myBooks.pagination.size = paginationData.size || 10
+        this.myBooks.pagination.total = paginationData.total || 0
+        this.myBooks.pagination.pages = Math.ceil(this.myBooks.pagination.total / this.myBooks.pagination.size)
       }
     }
   },

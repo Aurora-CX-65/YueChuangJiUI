@@ -26,7 +26,7 @@
 
       <div v-else class="chapter-list">
         <el-table :data="chapters" style="width: 100%" row-key="id">
-          <el-table-column prop="orderNum" label="序号" width="80" align="center" />
+          <el-table-column prop="sortOrder" label="序号" width="80" align="center" />
           <el-table-column prop="title" label="章节标题" min-width="200" />
           <el-table-column prop="wordCount" label="字数" width="100" align="center" />
           <el-table-column prop="status" label="状态" width="100" align="center">
@@ -34,9 +34,9 @@
               <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="updateTime" label="更新时间" width="180" align="center">
+          <el-table-column prop="updatedAt" label="更新时间" width="180" align="center">
             <template #default="{ row }">
-              {{ formatDateTime(row.updateTime) }}
+              {{ formatDateTime(row.updatedAt) }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="250" align="center" fixed="right">
@@ -47,17 +47,19 @@
                 v-if="row.status === 'draft'" 
                 link 
                 type="success" 
-                @click="publishChapter(row)"
+                @click="submitChapter(row)"
               >
-                发布
+                提交审核
               </el-button>
+              <el-tag v-else-if="row.status === 'pending_review'" type="warning" size="small" class="mx-2">审核中</el-tag>
               <el-button 
                 v-else-if="row.status === 'published'" 
                 link 
                 type="warning" 
-                @click="unpublishChapter(row)"
+                disabled
+                title="已发布章节不可撤回"
               >
-                撤回
+                已发布
               </el-button>
               
               <el-popconfirm 
@@ -142,40 +144,17 @@ export default {
       router.push(`/author/books/${bookId}/chapters/${chapter.id}/edit`)
     }
 
-    const publishChapter = async (chapter) => {
+    const submitChapter = async (chapter) => {
       try {
-        await ElMessageBox.confirm('确定要发布这一章吗？发布后读者可见。', '提示', {
+        await ElMessageBox.confirm('确定要提交这一章进行审核吗？', '提示', {
           type: 'info'
         })
-        await chapterStore.publishChapter(chapter.id)
+        await chapterStore.submitChapterForReview(chapter.id)
         // 刷新列表
         await chapterStore.fetchChaptersByBook(bookId, 1, 100)
       } catch (e) {
         if (e !== 'cancel') console.error(e)
       }
-    }
-
-    const unpublishChapter = async (chapter) => {
-        // 需要 store 支持 unpublish，或者调用 service
-        // 检查 store 是否有 unpublishChapter
-        // 之前 read store 时没有 unpublishChapter，但 service 有
-        // 我们可以补充 store action 或者直接调用 service
-        // 为了规范，建议补充 store action，但这里先用 service 临时解决，或者假设 store 已经有了（实际上没有）
-        // 让我们看看 chapter-store.js ... 确实只有 publishChapter
-        // 我们需要修改 chapter-store.js 添加 unpublishChapter
-        // 这里先暂时 catch 错误
-        try {
-            await ElMessageBox.confirm('确定要撤回这一章吗？撤回后读者不可见。', '提示', {
-                type: 'warning'
-            })
-            const { ChapterService } = await import('@/services/chapter-service')
-            await ChapterService.unpublishChapter(chapter.id)
-            ElMessage.success('已撤回')
-            // 手动更新本地状态
-            chapterStore.updateChapterInLists(chapter.id, { status: 'draft' })
-        } catch (e) {
-            if (e !== 'cancel') console.error(e)
-        }
     }
 
     const deleteChapter = async (chapter) => {
@@ -190,6 +169,7 @@ export default {
     const getStatusLabel = (status) => {
       const map = {
         'draft': '草稿',
+        'pending_review': '审核中',
         'published': '已发布',
         'archived': '已归档'
       }
@@ -199,6 +179,7 @@ export default {
     const getStatusType = (status) => {
       const map = {
         'draft': 'info',
+        'pending_review': 'warning',
         'published': 'success',
         'archived': 'warning'
       }
@@ -211,8 +192,7 @@ export default {
       loading,
       createChapter,
       editChapter,
-      publishChapter,
-      unpublishChapter,
+      submitChapter,
       deleteChapter,
       getStatusLabel,
       getStatusType,

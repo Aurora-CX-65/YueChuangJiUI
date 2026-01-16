@@ -30,6 +30,7 @@
             </template>
             <el-menu-item index="/admin/books">书籍管理</el-menu-item>
             <el-menu-item index="/admin/book-reviews">书籍审核</el-menu-item>
+            <el-menu-item index="/admin/chapter-reviews">章节审核</el-menu-item>
           </el-sub-menu>
 
           <el-sub-menu index="comments-center">

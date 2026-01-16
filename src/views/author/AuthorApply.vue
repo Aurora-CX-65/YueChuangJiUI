@@ -200,7 +200,8 @@ export default {
     }
 
     const getStatusIcon = (status) => {
-      switch (status) {
+      if (!status) return 'info'
+      switch (status.toUpperCase()) {
         case 'PENDING': return 'info'
         case 'APPROVED': return 'success'
         case 'REJECTED': return 'warning'
@@ -209,7 +210,8 @@ export default {
     }
 
     const getStatusTitle = (status) => {
-      switch (status) {
+      if (!status) return '未知状态'
+      switch (status.toUpperCase()) {
         case 'PENDING': return '审核中'
         case 'APPROVED': return '审核通过'
         case 'REJECTED': return '申请被驳回'
@@ -218,7 +220,8 @@ export default {
     }
 
     const getStatusDesc = (status) => {
-      switch (status) {
+      if (!status) return ''
+      switch (status.toUpperCase()) {
         case 'PENDING': return '您的申请正在审核中，请耐心等待。'
         case 'APPROVED': return '恭喜您成为作者！'
         case 'REJECTED': return `驳回原因：${latestApplication.value?.reason || '不符合要求'}`

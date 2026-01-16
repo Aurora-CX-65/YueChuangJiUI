@@ -222,4 +222,13 @@ export class BookService {
     formData.append('file', file)
     return await httpClient.upload(`/api/books/${bookId}/cover`, formData)
   }
+
+  /**
+   * 提交书籍审核
+   * @param {number} bookId - 书籍ID
+   * @returns {Promise<boolean>} 提交结果
+   */
+  static async submitBookForReview(bookId) {
+    return await httpClient.post(`/api/books/${bookId}/submit-review`)
+  }
 }

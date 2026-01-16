@@ -102,6 +102,15 @@ export class AdminService {
     return await httpClient.post(`/api/admin/review/books/${id}/reject`, { comment })
   }
 
+  static async approveChapterReview(id, comment = '') {
+    const body = comment ? { comment } : {}
+    return await httpClient.post(`/api/admin/review/chapters/${id}/approve`, body)
+  }
+
+  static async rejectChapterReview(id, comment) {
+    return await httpClient.post(`/api/admin/review/chapters/${id}/reject`, { comment })
+  }
+
   static async approveReviewItem(id, comment = '') {
     const body = comment ? { comment } : {}
     return await httpClient.post(`/api/admin/review/items/${id}/approve`, body)

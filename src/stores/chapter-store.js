@@ -61,7 +61,7 @@ export const useChapterStore = defineStore('chapter', {
     /**
      * 获取当前章节的序号
      */
-    currentChapterOrder: (state) => state.currentChapter.item?.orderNum,
+    currentChapterOrder: (state) => state.currentChapter.item?.sortOrder,
     
     /**
      * 根据书籍ID获取阅读进度
@@ -80,8 +80,8 @@ export const useChapterStore = defineStore('chapter', {
      */
     hasNextChapter: (state) => (bookId) => {
       const chapters = state.chaptersByBook[bookId]?.items || []
-      const currentOrder = state.currentChapter.item?.orderNum || 0
-      return chapters.some(chapter => chapter.orderNum > currentOrder)
+      const currentOrder = state.currentChapter.item?.sortOrder || 0
+      return chapters.some(chapter => chapter.sortOrder > currentOrder)
     },
     
     /**
@@ -89,8 +89,8 @@ export const useChapterStore = defineStore('chapter', {
      */
     hasPrevChapter: (state) => (bookId) => {
       const chapters = state.chaptersByBook[bookId]?.items || []
-      const currentOrder = state.currentChapter.item?.orderNum || 0
-      return chapters.some(chapter => chapter.orderNum < currentOrder)
+      const currentOrder = state.currentChapter.item?.sortOrder || 0
+      return chapters.some(chapter => chapter.sortOrder < currentOrder)
     },
     
     /**
@@ -98,10 +98,10 @@ export const useChapterStore = defineStore('chapter', {
      */
     getNextChapter: (state) => (bookId) => {
       const chapters = state.chaptersByBook[bookId]?.items || []
-      const currentOrder = state.currentChapter.item?.orderNum || 0
+      const currentOrder = state.currentChapter.item?.sortOrder || 0
       return chapters
-        .filter(chapter => chapter.orderNum > currentOrder)
-        .sort((a, b) => a.orderNum - b.orderNum)[0] || null
+        .filter(chapter => chapter.sortOrder > currentOrder)
+        .sort((a, b) => a.sortOrder - b.sortOrder)[0] || null
     },
     
     /**
@@ -109,10 +109,10 @@ export const useChapterStore = defineStore('chapter', {
      */
     getPrevChapter: (state) => (bookId) => {
       const chapters = state.chaptersByBook[bookId]?.items || []
-      const currentOrder = state.currentChapter.item?.orderNum || 0
+      const currentOrder = state.currentChapter.item?.sortOrder || 0
       return chapters
-        .filter(chapter => chapter.orderNum < currentOrder)
-        .sort((a, b) => b.orderNum - a.orderNum)[0] || null
+        .filter(chapter => chapter.sortOrder < currentOrder)
+        .sort((a, b) => b.sortOrder - a.sortOrder)[0] || null
     }
   },
 
@@ -193,7 +193,7 @@ export const useChapterStore = defineStore('chapter', {
           if (chapter.bookId) {
             this.updateReadingProgress(chapter.bookId, {
               currentChapterId: chapter.id,
-              currentChapterOrder: chapter.orderNum,
+              currentChapterOrder: chapter.sortOrder,
               lastReadTime: new Date().toISOString()
             })
           }
@@ -228,7 +228,7 @@ export const useChapterStore = defineStore('chapter', {
             this.chaptersByBook[chapter.bookId].pagination.total++
             
             // 按序号排序
-            this.chaptersByBook[chapter.bookId].items.sort((a, b) => a.orderNum - b.orderNum)
+            this.chaptersByBook[chapter.bookId].items.sort((a, b) => a.sortOrder - b.sortOrder)
           }
         }
         
@@ -270,8 +270,8 @@ export const useChapterStore = defineStore('chapter', {
               chapters[index] = { ...chapters[index], ...updatedChapter }
               
               // 如果序号改变，重新排序
-              if (updateData.orderNum !== undefined) {
-                chapters.sort((a, b) => a.orderNum - b.orderNum)
+              if (updateData.sortOrder !== undefined) {
+                chapters.sort((a, b) => a.sortOrder - b.sortOrder)
               }
             }
           }
@@ -326,6 +326,30 @@ export const useChapterStore = defineStore('chapter', {
         return result
       } catch (error) {
         this.handleError(error, '删除章节')
+        throw error
+      }
+    },
+
+    /**
+     * 提交章节审核
+     * @param {number} chapterId - 章节ID
+     */
+    async submitChapterForReview(chapterId) {
+      try {
+        const result = await ChapterService.submitChapterForReview(chapterId)
+        
+        if (result) {
+          // 更新章节状态
+          this.updateChapterInLists(chapterId, { status: 'pending_review' })
+          
+          if (window.notificationManager) {
+            window.notificationManager.success('已提交审核')
+          }
+        }
+        
+        return result
+      } catch (error) {
+        this.handleError(error, '提交审核')
         throw error
       }
     },
@@ -407,13 +431,24 @@ export const useChapterStore = defineStore('chapter', {
      */
     async recordReadingProgress(chapterId, position = 0) {
       try {
-        const result = await ChapterService.recordReadingProgress(chapterId, position)
+        // 需要 bookId，从当前章节获取
+        const bookId = this.currentChapter.item?.bookId
+        if (!bookId) {
+            console.warn('记录阅读进度失败: 未找到书籍ID')
+            return false
+        }
+
+        const result = await ReadingProgressService.recordReading({
+            bookId,
+            chapterId,
+            position,
+            readingTime: 0 // 暂时传0或根据需求统计时间
+        })
         
         if (result && this.currentChapter.item) {
-          const bookId = this.currentChapter.item.bookId
           this.updateReadingProgress(bookId, {
             currentChapterId: chapterId,
-            currentChapterOrder: this.currentChapter.item.orderNum,
+            currentChapterOrder: this.currentChapter.item.sortOrder,
             readPosition: position,
             lastReadTime: new Date().toISOString()
           })

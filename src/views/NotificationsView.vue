@@ -99,23 +99,20 @@
           </template>
         </el-alert>
         <el-form v-else label-width="140px">
-          <el-form-item label="系统通知">
-            <el-switch v-model="settingsForm.systemNotification" />
-          </el-form-item>
           <el-form-item label="评论通知">
-            <el-switch v-model="settingsForm.commentNotification" />
+            <el-switch v-model="settingsForm.commentReply" />
           </el-form-item>
-          <el-form-item label="点赞通知">
-            <el-switch v-model="settingsForm.likeNotification" />
+          <el-form-item label="审核结果通知">
+            <el-switch v-model="settingsForm.auditResult" />
           </el-form-item>
           <el-form-item label="关注通知">
-            <el-switch v-model="settingsForm.followNotification" />
+            <el-switch v-model="settingsForm.followUpdate" />
           </el-form-item>
-          <el-form-item label="浏览器通知">
-            <el-switch v-model="settingsForm.browserNotification" />
+          <el-form-item label="系统通知">
+            <el-switch v-model="settingsForm.systemNotice" />
           </el-form-item>
-          <el-form-item label="邮件通知">
-            <el-switch v-model="settingsForm.emailNotification" />
+          <el-form-item label="书籍更新通知">
+            <el-switch v-model="settingsForm.bookUpdate" />
           </el-form-item>
         </el-form>
       </div>
@@ -267,13 +264,16 @@ export default {
       try {
         const settings = await this.notificationStore.fetchNotificationSettings()
         if (settings) {
+          // 确保正确处理 null/undefined 值为 true（默认值）或 false
+          // 如果后端返回的设置中某项为 null，通常意味着使用默认值（这里假设默认为 true）
+          // 但既然是从后端获取的 settings，通常应该有值。
+          // 使用 === true 或 !! 来确保布尔转换
           this.settingsForm = {
-            emailNotification: !!settings.emailNotification,
-            browserNotification: !!settings.browserNotification,
-            commentNotification: !!settings.commentNotification,
-            likeNotification: !!settings.likeNotification,
-            followNotification: !!settings.followNotification,
-            systemNotification: !!settings.systemNotification
+            followUpdate: settings.followUpdate !== false,
+            commentReply: settings.commentReply !== false,
+            systemNotice: settings.systemNotice !== false,
+            auditResult: settings.auditResult !== false,
+            bookUpdate: settings.bookUpdate !== false
           }
         }
       } catch (e) {
