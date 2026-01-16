@@ -156,6 +156,38 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="statusDialogVisible" title="修改书籍状态" width="400px">
+      <el-form label-position="top">
+        <el-form-item label="当前状态">
+          <el-tag :type="getStatusType(currentBook?.status)">{{ getStatusLabel(currentBook?.status) }}</el-tag>
+        </el-form-item>
+        <el-form-item label="新状态" required>
+          <el-select v-model="newStatus" style="width: 100%">
+            <el-option label="连载中" value="serializing" />
+            <el-option label="已完结" value="completed" />
+            <el-option label="已发布" value="published" />
+            <el-option label="草稿" value="draft" />
+            <el-option label="待审核" value="pending_review" />
+            <el-option label="已断更" value="suspended" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="变更原因">
+          <el-input 
+            v-model="statusReason" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="请输入状态变更原因（可选）" 
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="statusDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="actionLoading" @click="confirmUpdateStatus">确定修改</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -181,7 +213,10 @@ export default {
       unsuspendStatus: 'serializing',
       selectedRows: [],
       batchSuspendVisible: false,
-      batchSuspendReason: ''
+      batchSuspendReason: '',
+      statusDialogVisible: false,
+      newStatus: '',
+      statusReason: ''
     }
   },
   mounted() {
@@ -365,6 +400,32 @@ export default {
         console.error('批量下架书籍失败:', e)
         if (window.notificationManager) {
           window.notificationManager.error('批量下架失败')
+        }
+      } finally {
+        this.actionLoading = false
+      }
+    },
+    openStatusDialog(row) {
+      this.currentBook = row
+      this.newStatus = row.status
+      this.statusReason = ''
+      this.statusDialogVisible = true
+    },
+    async confirmUpdateStatus() {
+      if (!this.currentBook) return
+      
+      this.actionLoading = true
+      try {
+        await AdminService.updateBookStatus(this.currentBook.id, this.newStatus, this.statusReason)
+        if (window.notificationManager) {
+          window.notificationManager.success('状态更新成功')
+        }
+        this.statusDialogVisible = false
+        this.loadBooks()
+      } catch (e) {
+        console.error('更新状态失败:', e)
+        if (window.notificationManager) {
+          window.notificationManager.error('更新状态失败')
         }
       } finally {
         this.actionLoading = false

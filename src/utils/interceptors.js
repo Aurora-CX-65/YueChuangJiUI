@@ -286,9 +286,9 @@ export class ResponseInterceptors {
       }
     }
 
-    // 使用错误处理器处理错误（不进行全局错误提示）
+    // 使用错误处理器处理错误（开启全局错误提示）
     ErrorHandler.handleError(error, {
-      showNotification: false
+      showNotification: true
     })
 
     throw error

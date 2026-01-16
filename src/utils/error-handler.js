@@ -21,7 +21,14 @@ class ErrorHandler {
         // 获取错误信息
         const errorInfo = this.parseError(error)
 
-        // 不进行全局错误通知
+        // 全局错误通知
+        if (showNotification) {
+            const message = customMessage || errorInfo.message
+            const duration = this.getNotificationDuration(errorInfo.code)
+            
+            // 使用NotificationManager显示错误
+            notificationManager.error(message, { duration })
+        }
 
         // 特殊错误处理
         this.handleSpecialErrors(error, errorInfo)

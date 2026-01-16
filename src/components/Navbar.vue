@@ -7,6 +7,7 @@
         <router-link to="/" exact>首页</router-link>
         <router-link to="/books">书库</router-link>
         <router-link to="/ranking">排行</router-link>
+        <a href="javascript:void(0)" @click="handleAuthorCenter" :class="{ 'router-link-active': $route.path.includes('/author') }">作者中心</a>
       </nav>
     </div>
     <div class="navbar-right">
@@ -95,6 +96,7 @@ import { useUserStore } from '@/stores/user-store.js'
 import { useNotificationStore } from '@/stores/notification-store.js'
 import { NotificationService } from '@/services/notification-service.js'
 import { Search, ArrowDown, User, SwitchButton, Setting, Bell } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 export default {
   name: 'Navbar',
@@ -307,6 +309,31 @@ export default {
       const m = String(d.getMinutes()).padStart(2, '0')
       const s = String(d.getSeconds()).padStart(2, '0')
       return `${y}-${M}-${D} ${h}:${m}:${s}`
+    },
+    handleAuthorCenter() {
+      if (!this.userStore.isLoggedIn) {
+        ElMessage.warning('请先登录')
+        this.$router.push('/auth/login')
+        return
+      }
+
+      // 如果是作者，跳转到作者中心
+      if (this.userStore.isAuthor) {
+        this.$router.push('/author')
+      } else {
+        // 如果是读者，提示申请成为作者
+        ElMessageBox.confirm(
+          '您还不是作者，是否申请成为作者？',
+          '成为作者',
+          {
+            confirmButtonText: '去申请',
+            cancelButtonText: '取消',
+            type: 'info'
+          }
+        ).then(() => {
+          this.$router.push('/author/apply')
+        }).catch(() => {})
+      }
     }
   }
 }

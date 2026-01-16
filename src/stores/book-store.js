@@ -702,6 +702,41 @@ export const useBookStore = defineStore('book', {
     },
 
     /**
+     * 上传书籍封面
+     * @param {number} bookId - 书籍ID
+     * @param {File} file - 封面文件
+     */
+    async uploadBookCover(bookId, file) {
+      try {
+        this.startLoading()
+        
+        const coverUrl = await BookService.uploadBookCover(bookId, file)
+        
+        if (coverUrl) {
+          // 更新当前书籍
+          if (this.currentBook.item?.id === bookId) {
+            this.currentBook.item = { ...this.currentBook.item, coverImage: coverUrl }
+          }
+          
+          // 更新列表中的书籍
+          this.updateBookInLists(bookId, { coverImage: coverUrl })
+        }
+        
+        this.stopLoading()
+        
+        if (window.notificationManager) {
+          window.notificationManager.success('封面上传成功')
+        }
+        
+        return coverUrl
+      } catch (error) {
+        this.stopLoading()
+        this.handleError(error, '上传封面')
+        throw error
+      }
+    },
+
+    /**
      * 更新书籍
      * @param {number} bookId - 书籍ID
      * @param {Object} updateData - 更新数据

@@ -144,7 +144,7 @@ export const useChapterStore = defineStore('chapter', {
         bookChapters.loading = true
         bookChapters.error = null
         
-        const response = await ChapterService.getChaptersByBook(bookId, page, size)
+        const response = await ChapterService.getChaptersByBookId(bookId, page, size)
         
         if (response) {
           if (append && page > 1) {

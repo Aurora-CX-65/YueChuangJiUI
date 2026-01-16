@@ -15,10 +15,14 @@
             <el-icon><DataAnalysis /></el-icon>
             <span>仪表盘</span>
           </el-menu-item>
-          <el-menu-item index="/admin/users">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
+          <el-sub-menu index="users-center">
+            <template #title>
+              <el-icon><User /></el-icon>
+              <span>用户中心</span>
+            </template>
+            <el-menu-item index="/admin/users">用户管理</el-menu-item>
+            <el-menu-item index="/admin/author-applications">作者申请</el-menu-item>
+          </el-sub-menu>
           <el-sub-menu index="books-center">
             <template #title>
               <el-icon><Collection /></el-icon>

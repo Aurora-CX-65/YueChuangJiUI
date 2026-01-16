@@ -84,6 +84,16 @@ const routes = [
         }
       },
       {
+        path: 'author/apply',
+        name: 'AuthorApply',
+        component: () => import('../views/author/AuthorApply.vue'),
+        meta: {
+          title: '申请成为作者',
+          description: '申请成为平台作者',
+          requiresAuth: true
+        }
+      },
+      {
         path: 'authors/:id',
         redirect: to => {
           return { name: 'UserProfile', params: { id: to.params.id } }
@@ -134,6 +144,74 @@ const routes = [
     redirect: '/auth/login'
   }
   ,
+  {
+    path: '/author',
+    component: () => import('../layouts/AuthorLayout.vue'),
+    redirect: '/author/dashboard',
+    meta: {
+      requiresRole: 'author'
+    },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'AuthorDashboard',
+        component: () => import('../views/author/AuthorDashboard.vue'),
+        meta: { title: '作者中心 - 仪表盘', requiresRole: 'author' }
+      },
+      {
+        path: 'books',
+        name: 'AuthorBooks',
+        component: () => import('../views/author/AuthorBooks.vue'),
+        meta: { title: '作者中心 - 作品管理', requiresRole: 'author' }
+      },
+      {
+        path: 'books/create',
+        name: 'AuthorBookCreate',
+        // 暂时指向一个占位或复用组件，或者先指向 Dashboard
+        // 我们需要创建 AuthorBookCreate.vue，但还没创建
+        // 先创建 AuthorBookCreate.vue
+        component: () => import('../views/author/AuthorBookCreate.vue'),
+        meta: { title: '作者中心 - 创建新书', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/edit',
+        name: 'AuthorBookEdit',
+        // 还没创建
+        component: () => import('../views/author/AuthorBookEdit.vue'),
+        meta: { title: '作者中心 - 编辑书籍', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/chapters',
+        name: 'AuthorChapterManager',
+        component: () => import('../views/author/AuthorChapterManager.vue'),
+        meta: { title: '作者中心 - 章节管理', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/chapters/create',
+        name: 'AuthorChapterCreate',
+        component: () => import('../views/author/AuthorChapterEditor.vue'),
+        meta: { title: '作者中心 - 创建章节', requiresRole: 'author' }
+      },
+      {
+        path: 'books/:id/chapters/:chapterId/edit',
+        name: 'AuthorChapterEdit',
+        component: () => import('../views/author/AuthorChapterEditor.vue'),
+        meta: { title: '作者中心 - 编辑章节', requiresRole: 'author' }
+      },
+      {
+        path: 'comments',
+        name: 'AuthorComments',
+        component: () => import('../views/author/AuthorComments.vue'),
+        meta: { title: '作者中心 - 评论互动', requiresRole: 'author' }
+      },
+      {
+        path: 'settings',
+        name: 'AuthorSettings',
+        component: () => import('../views/author/AuthorSettings.vue'),
+        meta: { title: '作者中心 - 创作设置', requiresRole: 'author' }
+      }
+    ]
+  },
   {
     path: '/admin',
     component: () => import('../layouts/AdminLayout.vue'),
@@ -195,6 +273,16 @@ const routes = [
         meta: {
           title: '评论审核',
           description: '审核用户评论',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'author-applications',
+        name: 'AdminAuthorApplications',
+        component: () => import('../views/admin/AdminAuthorApplications.vue'),
+        meta: {
+          title: '作者申请审核',
+          description: '审核作者申请',
           requiresRole: 'admin'
         }
       },

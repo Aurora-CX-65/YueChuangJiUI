@@ -201,4 +201,31 @@ export class AdminService {
   static async searchBooks(keyword) {
     return await httpClient.get('/api/admin/books/search', { keyword })
   }
+
+  // === Author Application Management ===
+  static async getAuthorApplications(page = 1, size = 10, status = '') {
+    const params = { page, size }
+    if (status) params.status = status
+    return await httpClient.get('/api/admin/author-applications', params)
+  }
+
+  static async approveAuthorApplication(id, comment = '') {
+    const body = comment ? { comment } : {}
+    return await httpClient.post(`/api/admin/author-applications/${id}/approve`, body)
+  }
+
+  static async rejectAuthorApplication(id, comment) {
+    return await httpClient.post(`/api/admin/author-applications/${id}/reject`, { comment })
+  }
+
+  // === Banner Image Upload ===
+  static async uploadBannerImage(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return await httpClient.post('/api/admin/banners/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  }
 }

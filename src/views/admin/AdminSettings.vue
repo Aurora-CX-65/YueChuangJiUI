@@ -135,6 +135,7 @@
           <el-input v-model="bannerForm.title" placeholder="请输入标题" />
         </el-form-item>
         <el-form-item label="图片" prop="imageUrl" required>
+          <el-input v-model="bannerForm.imageUrl" placeholder="上传图片或输入图片地址" style="margin-bottom: 10px;" />
           <el-upload
             class="avatar-uploader"
             action="#"
@@ -390,16 +391,7 @@ export default {
     },
     async uploadBannerImage(option) {
       try {
-        const res = await UploadService.uploadFile(option.file, 'banner')
-        // 假设返回格式是 { data: 'url', ... } 或直接是 url string，视UploadService实现而定
-        // 查看 UploadService.js: return await httpClient.post(...)
-        // 假设后端返回 Result<String>，则 res.data 是 url，或者直接是 url 如果拦截器处理了
-        // 根据 FileUploadController.uploadFile: Result.success("上传成功", fileUrl)
-        // 通常 httpClient 拦截器会返回 data 部分。
-        // 如果 httpClient 返回的是 response body (Result object), 那么 url 在 res.data
-        // 如果 httpClient 拦截器已经解包 Result.data，那么 res 就是 url
-        // 按照 admin-service.js 的 pattern: return await httpClient.get(...) -> returns res.data (unwrapped)
-        // 所以这里 res 应该是 url string
+        const res = await AdminService.uploadBannerImage(option.file)
         this.bannerForm.imageUrl = res
       } catch (e) {
         console.error('上传图片失败', e)

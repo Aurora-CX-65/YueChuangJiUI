@@ -160,15 +160,10 @@ class NotificationManager {
    * @param {Object} notification 通知对象
    */
   fallbackNotification(notification) {
-    // 在开发环境下使用console和alert
+    // 在开发环境下使用console
     if (import.meta.env.DEV) {
       const prefix = this.getTypePrefix(notification.type)
       console.log(`${prefix} ${notification.message}`)
-      
-      // 对于错误类型，显示alert
-      if (notification.type === 'error') {
-        alert(`错误: ${notification.message}`)
-      }
     } else {
       // 生产环境下只使用console
       console.log(`[${notification.type.toUpperCase()}] ${notification.message}`)

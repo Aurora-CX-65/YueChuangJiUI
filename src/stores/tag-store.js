@@ -106,7 +106,8 @@ export const useTagStore = defineStore('tag', {
         
         this.startLoading()
         
-        const tags = await TagService.getAllTags()
+        console.log('Fetching tags...')
+        const tags = await TagService.getTags()
         
         if (tags) {
           this.tags = tags
