@@ -107,6 +107,7 @@
 
 <script>
 import { AdminService } from '@/services/admin-service.js'
+import { useUserStore } from '@/stores/user-store.js'
 
 export default {
   name: 'AdminAuthorApplications',
@@ -129,19 +130,33 @@ export default {
       }
     }
   },
+  setup() {
+    const userStore = useUserStore()
+    return { userStore }
+  },
   mounted() {
     this.loadApplications()
   },
   methods: {
+    // 判断是否为编辑角色（非管理员）
+    isEditorOnly() {
+      return this.userStore.isEditor && !this.userStore.isAdmin
+    },
+
     async loadApplications() {
       this.loading = true
       try {
-        const res = await AdminService.getAuthorApplications(this.page, this.size, this.filterStatus)
+        let res
+        if (this.isEditorOnly()) {
+          res = await AdminService.getEditorAuthorApplications(this.page, this.size, this.filterStatus)
+        } else {
+          res = await AdminService.getAuthorApplications(this.page, this.size, this.filterStatus)
+        }
         this.applications = res?.records || []
         this.total = res?.total || 0
       } catch (e) {
         console.error('加载申请列表失败:', e)
-        window.notificationManager && window.notificationManager.error('加载失败')
+        window.notificationManager.error(e.message || '加载申请列表失败')
       } finally {
         this.loading = false
       }
@@ -182,24 +197,32 @@ export default {
     },
     async submitReview() {
       if (this.reviewAction === 'reject' && !this.reviewForm.comment) {
-        window.notificationManager && window.notificationManager.warning('拒绝申请必须填写理由')
+        window.notificationManager.warning('拒绝申请必须填写理由')
         return
       }
       
       this.submitting = true
       try {
         if (this.reviewAction === 'approve') {
-          await AdminService.approveAuthorApplication(this.currentRow.id, this.reviewForm.comment)
-          window.notificationManager && window.notificationManager.success('已批准申请')
+          if (this.isEditorOnly()) {
+            await AdminService.approveEditorAuthorApplication(this.currentRow.id, this.reviewForm.comment)
+          } else {
+            await AdminService.approveAuthorApplication(this.currentRow.id, this.reviewForm.comment)
+          }
+          window.notificationManager.success('已批准申请')
         } else {
-          await AdminService.rejectAuthorApplication(this.currentRow.id, this.reviewForm.comment)
-          window.notificationManager && window.notificationManager.success('已拒绝申请')
+          if (this.isEditorOnly()) {
+            await AdminService.rejectEditorAuthorApplication(this.currentRow.id, this.reviewForm.comment)
+          } else {
+            await AdminService.rejectAuthorApplication(this.currentRow.id, this.reviewForm.comment)
+          }
+          window.notificationManager.success('已拒绝申请')
         }
         this.dialogVisible = false
         this.loadApplications()
       } catch (e) {
         console.error('审核操作失败:', e)
-        window.notificationManager && window.notificationManager.error('操作失败')
+        window.notificationManager.error(e.message || '操作失败')
       } finally {
         this.submitting = false
       }

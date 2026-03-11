@@ -24,35 +24,15 @@
                 <el-form-item label="网站关键词">
                   <el-input v-model="form['site.keywords']" placeholder="逗号分隔" />
                 </el-form-item>
-                <el-form-item label="最大文件大小(字节)">
-                  <el-input-number v-model="formNumber['upload.max_file_size']" :min="1" :max="2147483647" />
-                </el-form-item>
-                <el-form-item label="允许扩展名(逗号)">
-                  <el-input v-model="form['upload.allowed_extensions']" placeholder="jpg,jpeg,png,gif" />
-                </el-form-item>
-                <el-form-item label="通知批量处理大小">
-                  <el-input-number v-model="formNumber['notification.batch_size']" :min="1" :max="10000" />
-                </el-form-item>
                 <el-form-item label="AI每日使用限制">
                   <el-input-number v-model="formNumber['ai.daily_limit']" :min="0" :max="100000" />
+                  <div class="form-tip">限制每个用户每日调用 AI 功能（自动纠错、内容续写等）的总次数，0 表示无限制。</div>
                 </el-form-item>
                 <el-form-item label="AI模型">
                   <el-input v-model="form['ai.deepseek_model']" placeholder="deepseek-chat" />
                 </el-form-item>
                 <el-form-item label="AI API Key">
                   <el-input v-model="form['ai.deepseek_api_key']" type="password" show-password placeholder="请输入密钥" />
-                </el-form-item>
-                <el-form-item label="自动审核通过阈值(0-1)">
-                  <el-input-number v-model="formFloat['audit.auto_approve_threshold']" :min="0" :max="1" :step="0.01" />
-                </el-form-item>
-                <el-form-item label="缓存默认过期(秒)">
-                  <el-input-number v-model="formNumber['cache.default_ttl']" :min="0" :max="864000" />
-                </el-form-item>
-                <el-form-item label="密码最小长度">
-                  <el-input-number v-model="formNumber['security.password_min_length']" :min="4" :max="128" />
-                </el-form-item>
-                <el-form-item label="登录最大尝试次数">
-                  <el-input-number v-model="formNumber['security.login_max_attempts']" :min="1" :max="50" />
                 </el-form-item>
               </el-form>
             </template>
@@ -261,7 +241,21 @@ export default {
       this.loading = true
       try {
         const res = await AdminService.getSystemSettings()
-        this.original = res?.settings || {}
+        const rawSettings = res?.settings || {}
+        
+        // 数据清洗：适配后端可能返回的对象结构（MyBatis @MapKey 可能返回嵌套对象）
+        const flatSettings = {}
+        Object.keys(rawSettings).forEach(key => {
+          const val = rawSettings[key]
+          if (val && typeof val === 'object') {
+            // 尝试获取 value 字段，涵盖驼峰和下划线
+            flatSettings[key] = val.settingValue || val.setting_value || val.value || ''
+          } else {
+            flatSettings[key] = val
+          }
+        })
+
+        this.original = flatSettings
         this.form = { ...this.original }
         this.formNumber = this.extractNumbers(this.form)
         this.formFloat = this.extractFloats(this.form)
@@ -274,12 +268,7 @@ export default {
     extractNumbers(map) {
       const out = {}
       const numericKeys = [
-        'upload.max_file_size',
-        'notification.batch_size',
-        'ai.daily_limit',
-        'cache.default_ttl',
-        'security.password_min_length',
-        'security.login_max_attempts'
+        'ai.daily_limit'
       ]
       numericKeys.forEach(k => {
         const v = map[k]
@@ -289,7 +278,9 @@ export default {
     },
     extractFloats(map) {
       const out = {}
-      const floatKeys = ['audit.auto_approve_threshold']
+      const floatKeys = [
+        // 'audit.auto_approve_threshold'
+      ]
       floatKeys.forEach(k => {
         const v = map[k]
         out[k] = v != null ? Number(v) : 0
@@ -317,20 +308,21 @@ export default {
     async saveSettings() {
       const changes = this.buildPayload()
       if (Object.keys(changes).length === 0) {
-        window.notificationManager && window.notificationManager.info('无改动需要保存')
+        window.notificationManager.info('无改动需要保存')
         return
       }
       if (this.formFloat['audit.auto_approve_threshold'] < 0 || this.formFloat['audit.auto_approve_threshold'] > 1) {
-        window.notificationManager && window.notificationManager.error('自动审核阈值需在0-1之间')
+        window.notificationManager.error('自动审核阈值需在0-1之间')
         return
       }
       this.saving = true
       try {
         await AdminService.updateSystemSettings(changes)
         this.original = { ...this.original, ...changes }
-        window.notificationManager && window.notificationManager.success('保存成功')
+        window.notificationManager.success('保存成功')
       } catch (e) {
         console.error('保存系统设置失败:', e)
+        window.notificationManager.error(e.message || '保存系统设置失败')
       } finally {
         this.saving = false
       }
@@ -339,6 +331,7 @@ export default {
       this.form = { ...this.original }
       this.formNumber = this.extractNumbers(this.form)
       this.formFloat = this.extractFloats(this.form)
+      window.notificationManager.info('已重置为上次保存的配置')
     },
 
     // === Banner Management Methods ===
@@ -350,6 +343,7 @@ export default {
         this.bannerTotal = res?.total || 0
       } catch (e) {
         console.error('加载轮播图失败:', e)
+        window.notificationManager.error(e.message || '加载轮播图失败')
       } finally {
         this.bannersLoading = false
       }
@@ -393,20 +387,21 @@ export default {
       try {
         const res = await AdminService.uploadBannerImage(option.file)
         this.bannerForm.imageUrl = res
+        window.notificationManager.success('图片上传成功')
       } catch (e) {
         console.error('上传图片失败', e)
-        window.notificationManager && window.notificationManager.error('上传图片失败')
+        window.notificationManager.error(e.message || '上传图片失败')
       }
     },
     beforeAvatarUpload(rawFile) {
       const isImage = rawFile.type.startsWith('image/')
       const isLt2M = rawFile.size / 1024 / 1024 < 2
       if (!isImage) {
-        window.notificationManager && window.notificationManager.error('只能上传图片文件!')
+        window.notificationManager.error('只能上传图片文件!')
         return false
       }
       if (!isLt2M) {
-        window.notificationManager && window.notificationManager.error('图片大小不能超过 2MB!')
+        window.notificationManager.error('图片大小不能超过 2MB!')
         return false
       }
       return true
@@ -435,17 +430,17 @@ export default {
           
           if (this.isEditMode) {
             await AdminService.updateBanner(this.bannerForm.id, payload)
-            window.notificationManager && window.notificationManager.success('更新成功')
+            window.notificationManager.success('更新成功')
           } else {
             await AdminService.createBanner(payload)
-            window.notificationManager && window.notificationManager.success('创建成功')
+            window.notificationManager.success('创建成功')
           }
           
           this.bannerDialogVisible = false
           this.loadBanners()
         } catch (e) {
           console.error('保存轮播图失败:', e)
-          window.notificationManager && window.notificationManager.error(this.isEditMode ? '更新失败' : '创建失败')
+          window.notificationManager.error(e.message || (this.isEditMode ? '更新失败' : '创建失败'))
         } finally {
           this.bannerSaving = false
         }
@@ -454,11 +449,11 @@ export default {
     async deleteBanner(row) {
       try {
         await AdminService.deleteBanner(row.id)
-        window.notificationManager && window.notificationManager.success('删除成功')
+        window.notificationManager.success('删除成功')
         this.loadBanners()
       } catch (e) {
         console.error('删除轮播图失败:', e)
-        window.notificationManager && window.notificationManager.error('删除失败')
+        window.notificationManager.error(e.message || '删除失败')
       }
     },
     async searchBooks(query) {

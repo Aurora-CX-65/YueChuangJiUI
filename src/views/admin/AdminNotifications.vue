@@ -80,7 +80,7 @@ export default {
     },
     async submit() {
       if (!this.form.title?.trim() || !this.form.content?.trim()) {
-        window.notificationManager && window.notificationManager.error('请填写标题与内容')
+        window.notificationManager.error('请填写标题与内容')
         return
       }
       this.saving = true
@@ -97,11 +97,12 @@ export default {
           targetUserIds: ids.length ? ids : null,
           type: 'system'
         })
-        window.notificationManager && window.notificationManager.success('系统通知已创建')
+        window.notificationManager.success('系统通知已创建')
         this.dialogVisible = false
         this.load()
       } catch (e) {
         console.error('创建系统通知失败:', e)
+        window.notificationManager.error(e.message || '创建系统通知失败')
       } finally {
         this.saving = false
       }
@@ -109,10 +110,11 @@ export default {
     async remove(row) {
       try {
         await NotificationService.deleteNotification(row.id)
-        window.notificationManager && window.notificationManager.success('删除通知成功')
+        window.notificationManager.success('删除通知成功')
         this.load()
       } catch (e) {
         console.error('删除通知失败:', e)
+        window.notificationManager.error(e.message || '删除通知失败')
       }
     }
   }

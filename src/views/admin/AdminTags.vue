@@ -44,7 +44,7 @@
           <el-input v-model="form.description" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="颜色">
-          <el-input v-model="form.color" placeholder="#409EFF 或关键字" />
+          <el-color-picker v-model="form.color" show-alpha />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -108,22 +108,34 @@ export default {
     },
     async submit() {
       if (!this.form.name || !this.form.name.trim()) {
-        window.notificationManager && window.notificationManager.error('请填写标签名称')
+        window.notificationManager.error('请填写标签名称')
         return
       }
       this.saving = true
       try {
+        // 确保颜色值为字符串，如果为 null 则设为空字符串
+        const colorVal = this.form.color || ''
+        
         if (this.dialogMode === 'create') {
-          await AdminService.createTag({ name: this.form.name.trim(), description: this.form.description?.trim() || '', color: this.form.color?.trim() || '' })
-          window.notificationManager && window.notificationManager.success('新增标签成功')
+          await AdminService.createTag({ 
+            name: this.form.name.trim(), 
+            description: this.form.description?.trim() || '', 
+            color: colorVal 
+          })
+          window.notificationManager.success('新增标签成功')
         } else {
-          await AdminService.updateTag(this.editId, { name: this.form.name.trim(), description: this.form.description?.trim() || '', color: this.form.color?.trim() || '' })
-          window.notificationManager && window.notificationManager.success('更新标签成功')
+          await AdminService.updateTag(this.editId, { 
+            name: this.form.name.trim(), 
+            description: this.form.description?.trim() || '', 
+            color: colorVal 
+          })
+          window.notificationManager.success('更新标签成功')
         }
         this.dialogVisible = false
         this.load()
       } catch (e) {
         console.error('保存标签失败:', e)
+        window.notificationManager.error(e.message || '保存标签失败')
       } finally {
         this.saving = false
       }
@@ -131,10 +143,11 @@ export default {
     async remove(row) {
       try {
         await AdminService.deleteTag(row.id)
-        window.notificationManager && window.notificationManager.success('删除标签成功')
+        window.notificationManager.success('删除标签成功')
         this.load()
       } catch (e) {
         console.error('删除标签失败:', e)
+        window.notificationManager.error(e.message || '删除标签失败')
       }
     }
   }

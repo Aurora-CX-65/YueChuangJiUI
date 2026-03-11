@@ -108,22 +108,23 @@ export default {
     },
     async submit() {
       if (!this.form.name || !this.form.name.trim()) {
-        window.notificationManager && window.notificationManager.error('请填写分类名称')
+        window.notificationManager.error('请填写分类名称')
         return
       }
       this.saving = true
       try {
         if (this.dialogMode === 'create') {
           await AdminService.createCategory({ name: this.form.name.trim(), description: this.form.description?.trim() || '', sortOrder: this.form.sortOrder ?? 0 })
-          window.notificationManager && window.notificationManager.success('新增分类成功')
+          window.notificationManager.success('新增分类成功')
         } else {
           await AdminService.updateCategory(this.editId, { name: this.form.name.trim(), description: this.form.description?.trim() || '', sortOrder: this.form.sortOrder ?? 0 })
-          window.notificationManager && window.notificationManager.success('更新分类成功')
+          window.notificationManager.success('更新分类成功')
         }
         this.dialogVisible = false
         this.load()
       } catch (e) {
         console.error('保存分类失败:', e)
+        window.notificationManager.error(e.message || '保存分类失败')
       } finally {
         this.saving = false
       }
@@ -131,10 +132,11 @@ export default {
     async remove(row) {
       try {
         await AdminService.deleteCategory(row.id)
-        window.notificationManager && window.notificationManager.success('删除分类成功')
+        window.notificationManager.success('删除分类成功')
         this.load()
       } catch (e) {
         console.error('删除分类失败:', e)
+        window.notificationManager.error(e.message || '删除分类失败')
       }
     }
   }

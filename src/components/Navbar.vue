@@ -7,7 +7,13 @@
         <router-link to="/" exact>首页</router-link>
         <router-link to="/books">书库</router-link>
         <router-link to="/ranking">排行</router-link>
-        <a href="javascript:void(0)" @click="handleAuthorCenter" :class="{ 'router-link-active': $route.path.includes('/author') }">作者中心</a>
+        <a 
+          href="javascript:void(0)" 
+          @click="handleAuthorCenter" 
+          :class="{ 'active-link': $route.path.startsWith('/author') && !$route.path.startsWith('/author/apply') }"
+        >
+          创作中心
+        </a>
       </nav>
     </div>
     <div class="navbar-right">
@@ -317,8 +323,8 @@ export default {
         return
       }
 
-      // 如果是作者，跳转到作者中心
-      if (this.userStore.isAuthor) {
+      // 如果是作者或编辑，跳转到作者中心（路由守卫会自动分流）
+      if (this.userStore.isAuthor || this.userStore.isEditor || this.userStore.isAdmin) {
         this.$router.push('/author')
       } else {
         // 如果是读者，提示申请成为作者
@@ -388,14 +394,16 @@ export default {
 }
 
 /* 活跃状态样式 - 使用精确匹配 */
-.nav-links a.router-link-exact-active {
+.nav-links a.router-link-exact-active,
+.nav-links a.active-link {
   color: var(--accent-color);
   background-color: rgba(255, 255, 255, 0.2);
   font-weight: 600;
 }
 
 /* 活跃状态下的底部指示器 */
-.nav-links a.router-link-exact-active::after {
+.nav-links a.router-link-exact-active::after,
+.nav-links a.active-link::after {
   content: '';
   position: absolute;
   bottom: -2px;

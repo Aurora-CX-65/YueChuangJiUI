@@ -123,6 +123,8 @@
 
 <script>
 import { AdminService } from '@/services/admin-service.js'
+import { useUserStore } from '@/stores/user-store.js'
+
 export default {
   name: 'AdminCommentReviews',
   data() {
@@ -147,6 +149,10 @@ export default {
       batchComment: ''
     }
   },
+  setup() {
+    const userStore = useUserStore()
+    return { userStore }
+  },
   mounted() {
     this.loadPending()
     this.loadHistory()
@@ -167,77 +173,19 @@ export default {
       const s = String(d.getSeconds()).padStart(2, '0')
       return `${y}-${M}-${D} ${h}:${m}:${s}`
     },
-    async loadPending() {
-      this.loading = true
-      try {
-        const res = await AdminService.getReviewItems(this.page, this.size, 'comment', this.status)
-        this.items = res?.records || []
-        this.total = res?.total || 0
-      } catch (e) {
-        console.error('加载评论审核列表失败:', e)
-      } finally {
-        this.loading = false
-      }
-    },
     handlePageChange(p) {
       this.page = p
       this.loadPending()
-    },
-    async loadHistory() {
-      this.historyLoading = true
-      try {
-        const res = await AdminService.getReviewHistory(1, 10, 'comment')
-        this.history = res?.records || []
-      } catch (e) {
-        console.error('加载评论审核历史失败:', e)
-      } finally {
-        this.historyLoading = false
-      }
     },
     openApprove(row) {
       this.actionRow = row
       this.approveComment = ''
       this.approveVisible = true
     },
-    async confirmApprove() {
-      if (!this.actionRow) return
-      this.actionLoading = true
-      try {
-        await AdminService.approveReviewItem(this.actionRow.id, this.approveComment.trim())
-        this.approveVisible = false
-        window.notificationManager && window.notificationManager.success('审核通过成功')
-        this.loadPending()
-        this.loadHistory()
-      } catch (e) {
-        console.error('审核通过失败:', e)
-      } finally {
-        this.actionLoading = false
-      }
-    },
     openReject(row) {
       this.actionRow = row
       this.rejectComment = ''
       this.rejectVisible = true
-    },
-    async confirmReject() {
-      if (!this.actionRow) return
-      const comment = this.rejectComment.trim()
-      if (!comment) {
-        window.notificationManager && window.notificationManager.error('请填写审核拒绝意见')
-        return
-      }
-      this.actionLoading = true
-      try {
-        await AdminService.rejectReviewItem(this.actionRow.id, comment)
-        this.rejectVisible = false
-        window.notificationManager && window.notificationManager.success('审核拒绝成功')
-        this.loadPending()
-        this.loadHistory()
-      } catch (e) {
-        console.error('审核拒绝失败:', e)
-      } finally {
-        this.actionLoading = false
-      }
     },
     openBatchApprove() {
       if (!this.selectedRows.length) return
@@ -251,6 +199,94 @@ export default {
       this.batchComment = ''
       this.batchVisible = true
     },
+    
+    // 判断是否为编辑角色（非管理员）
+    isEditorOnly() {
+      return this.userStore.isEditor && !this.userStore.isAdmin
+    },
+
+    async loadPending() {
+      this.loading = true
+      try {
+        let res
+        if (this.isEditorOnly()) {
+          res = await AdminService.getEditorReviewItems(this.page, this.size, 'comment', this.status)
+        } else {
+          res = await AdminService.getReviewItems(this.page, this.size, 'comment', this.status)
+        }
+        this.items = res?.records || []
+        this.total = res?.total || 0
+      } catch (e) {
+        console.error('加载评论审核列表失败:', e)
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async loadHistory() {
+      this.historyLoading = true
+      try {
+        let res
+        if (this.isEditorOnly()) {
+          res = await AdminService.getEditorReviewHistory(1, 10, 'comment')
+        } else {
+          res = await AdminService.getReviewHistory(1, 10, 'comment')
+        }
+        this.history = res?.records || []
+      } catch (e) {
+        console.error('加载评论审核历史失败:', e)
+      } finally {
+        this.historyLoading = false
+      }
+    },
+
+    async confirmApprove() {
+      if (!this.actionRow) return
+      this.actionLoading = true
+      try {
+        if (this.isEditorOnly()) {
+          await AdminService.approveEditorReviewItem(this.actionRow.id, this.approveComment.trim())
+        } else {
+          await AdminService.approveReviewItem(this.actionRow.id, this.approveComment.trim())
+        }
+        this.approveVisible = false
+        window.notificationManager.success('审核通过成功')
+        this.loadPending()
+        this.loadHistory()
+      } catch (e) {
+        console.error('审核通过失败:', e)
+        window.notificationManager.error(e.message || '审核通过失败')
+      } finally {
+        this.actionLoading = false
+      }
+    },
+
+    async confirmReject() {
+      if (!this.actionRow) return
+      const comment = this.rejectComment.trim()
+      if (!comment) {
+        window.notificationManager.error('请填写审核拒绝意见')
+        return
+      }
+      this.actionLoading = true
+      try {
+        if (this.isEditorOnly()) {
+          await AdminService.rejectEditorReviewItem(this.actionRow.id, comment)
+        } else {
+          await AdminService.rejectReviewItem(this.actionRow.id, comment)
+        }
+        this.rejectVisible = false
+        window.notificationManager.success('审核拒绝成功')
+        this.loadPending()
+        this.loadHistory()
+      } catch (e) {
+        console.error('审核拒绝失败:', e)
+        window.notificationManager.error(e.message || '审核拒绝失败')
+      } finally {
+        this.actionLoading = false
+      }
+    },
+
     async confirmBatch() {
       if (this.batchAction === 'rejected' && !this.batchComment.trim()) {
         if (window.notificationManager) {
@@ -262,24 +298,26 @@ export default {
       this.actionLoading = true
       try {
         const ids = this.selectedRows.map(r => r.targetId)
-        await AdminService.batchReview({
+        const payload = {
           itemIds: ids,
           result: this.batchAction,
           comment: this.batchComment.trim() || (this.batchAction === 'approved' ? '批量通过' : '')
-        })
-        
-        if (window.notificationManager) {
-          window.notificationManager.success('批量操作成功')
         }
+
+        if (this.isEditorOnly()) {
+          await AdminService.batchEditorReview(payload)
+        } else {
+          await AdminService.batchReview(payload)
+        }
+        
+        window.notificationManager.success('批量操作成功')
         this.batchVisible = false
         this.selectedRows = []
         this.loadPending()
         this.loadHistory()
       } catch (e) {
         console.error('批量操作失败:', e)
-        if (window.notificationManager) {
-          window.notificationManager.error('批量操作失败')
-        }
+        window.notificationManager.error(e.message || '批量操作失败')
       } finally {
         this.actionLoading = false
       }

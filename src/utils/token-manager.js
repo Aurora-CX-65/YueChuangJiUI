@@ -208,7 +208,8 @@ class TokenManager {
    * @returns {boolean} 是否已认证
    */
   static isAuthenticated() {
-    return this.getToken() && !this.isTokenExpired()
+    // 简单检查是否有token即可，不做过期检查，避免触发刷新或清理逻辑
+    return !!this.getToken()
   }
 
   /**

@@ -145,15 +145,11 @@ export default {
     async deleteComment(row) {
       try {
         await AdminService.deleteComment(row.id)
-        if (window.notificationManager) {
-          window.notificationManager.success('删除成功')
-        }
+        window.notificationManager.success('删除成功')
         this.loadComments()
       } catch (e) {
         console.error('删除评论失败:', e)
-        if (window.notificationManager) {
-          window.notificationManager.error('删除失败')
-        }
+        window.notificationManager.error(e.message || '删除失败')
       }
     },
     openBatchDelete() {
@@ -168,16 +164,12 @@ export default {
         try {
           const ids = this.selectedRows.map(r => r.id)
           await AdminService.batchDeleteComments(ids)
-          if (window.notificationManager) {
-            window.notificationManager.success('批量删除成功')
-          }
+          window.notificationManager.success('批量删除成功')
           this.selectedRows = []
           this.loadComments()
         } catch (e) {
           console.error('批量删除评论失败:', e)
-          if (window.notificationManager) {
-            window.notificationManager.error('批量删除失败')
-          }
+          window.notificationManager.error(e.message || '批量删除失败')
         } finally {
           this.actionLoading = false
         }

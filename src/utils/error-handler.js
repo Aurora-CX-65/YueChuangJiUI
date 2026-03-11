@@ -24,6 +24,13 @@ class ErrorHandler {
         // 全局错误通知
         if (showNotification) {
             const message = customMessage || errorInfo.message
+            
+            // 避免重复通知：如果同一个错误已经被通知过，且消息相同，则不再通知
+            if (error.__notifiedMessage === message) {
+                return errorInfo
+            }
+            error.__notifiedMessage = message
+
             const duration = this.getNotificationDuration(errorInfo.code)
             
             // 使用NotificationManager显示错误
@@ -133,10 +140,24 @@ class ErrorHandler {
      * 处理未授权错误
      */
     static async handleUnauthorized() {
-        // 清除令牌，但不强制跳转登录页
+        // 检查是否存在旧的token
         const { TokenManager } = await import('./token-manager.js')
+        const hasToken = TokenManager.isAuthenticated() // 这里我们用修改后的isAuthenticated，只检查是否有token字符串
+        
+        // 清除令牌
         TokenManager.clearAuth()
-        if (window.notificationManager) {
+        
+        // 如果当前已经在登录页或注册页，不提示
+        if (typeof window !== 'undefined') {
+            const path = window.location.pathname
+            if (path.includes('/login') || path.includes('/register') || path.includes('/auth/')) {
+                return
+            }
+        }
+
+        // 关键修复：只有当用户之前确实有登录状态（即有token）时，才提示“登录失效”
+        // 这样新用户第一次访问（没有token）遇到401时，就不会弹出提示
+        if (hasToken && window.notificationManager) {
             window.notificationManager.info('登录状态已失效，请登录后继续操作')
         }
     }

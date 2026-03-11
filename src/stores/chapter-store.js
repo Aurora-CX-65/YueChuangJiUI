@@ -6,6 +6,7 @@
 
 import { defineStore } from 'pinia'
 import { ChapterService } from '@/services/chapter-service.js'
+import { ReadingProgressService } from '@/services/reading-progress-service.js' // 引入 ReadingProgressService
 import { 
   createPersistConfig, 
   createLoadingState, 
@@ -389,7 +390,7 @@ export const useChapterStore = defineStore('chapter', {
         this.readingHistory.loading = true
         this.readingHistory.error = null
         
-        const response = await ChapterService.getReadingHistory(page, size)
+        const response = await ReadingProgressService.getReadingHistory(page, size)
         
         if (response) {
           if (append && page > 1) {
@@ -439,9 +440,9 @@ export const useChapterStore = defineStore('chapter', {
         }
 
         const result = await ReadingProgressService.recordReading({
-            bookId,
-            chapterId,
-            position,
+            bookId: Number(bookId),
+            chapterId: Number(chapterId),
+            position: Math.floor(position),
             readingTime: 0 // 暂时传0或根据需求统计时间
         })
         

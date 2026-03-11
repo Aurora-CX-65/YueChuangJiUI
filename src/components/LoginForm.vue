@@ -150,6 +150,9 @@ export default {
             this.banInfo = { type: code === 309 ? 'banned' : 'suspended', reason: '', until: '' }
             this.banDialogVisible = true
           }
+        } else {
+          // 其他登录错误提示
+          notificationManager.show(error.message || '登录失败，请检查用户名和密码', 'error');
         }
       } finally {
         this.loading = false;

@@ -144,12 +144,12 @@
                       </el-image>
                     </div>
                     <div class="history-info">
-                       <div class="history-title">{{ item.bookTitle }}</div>
-                       <div class="history-chapter">看到：{{ item.chapterTitle || '未知章节' }}</div>
+                       <div class="history-title">{{ item.bookTitle || item.bookName || item.title || '未知书籍' }}</div>
+                       <div class="history-chapter">看到：{{ item.chapterTitle || item.chapterName || '未知章节' }}</div>
                        <div class="history-time">
-                         <span>{{ formatDate(item.lastReadAt) }}</span>
-                         <span class="history-progress" v-if="item.progressPercentage">
-                            进度: {{ item.progressPercentage }}%
+                         <span>{{ formatDate(item.lastReadAt || item.updateTime || item.createTime || item.readTime) }}</span>
+                         <span class="history-progress" v-if="item.progressPercentage || item.progress">
+                            进度: {{ item.progressPercentage || item.progress }}%
                          </span>
                        </div>
                     </div>
@@ -272,6 +272,7 @@
 <script>
 import { useUserStore } from '@/stores/user-store.js'
 import { useBookStore } from '@/stores/book-store.js'
+import { useChapterStore } from '@/stores/chapter-store.js' // 引入 chapterStore
 import { ReadingProgressService } from '@/services/reading-progress-service.js'
 import BookCard from '@/components/books/BookCard.vue'
 import { formatDate } from '@/utils/formatters'
@@ -316,19 +317,17 @@ export default {
   setup() {
     const userStore = useUserStore()
     const bookStore = useBookStore()
+    const chapterStore = useChapterStore() // 使用 chapterStore
     const route = useRoute()
     
     // 监听路由参数 tab 的变化
     watch(() => route.query.tab, (newTab) => {
       if (newTab) {
-        // 需要在 mounted 后或 data 中生效，这里我们通过 expose 或者在 mounted 中处理
-        // 由于 activeTab 是 data 属性，setup 中无法直接访问 this.activeTab
-        // 所以我们还是在 mounted 中处理，或者在这里使用 ref 重构 activeTab
-        // 为了最小化修改，我们在 methods/watch 中处理
+        // ...
       }
     })
     
-    return { userStore, bookStore, route }
+    return { userStore, bookStore, chapterStore, route }
   },
   mounted() {
     this.initialize()
@@ -367,12 +366,17 @@ export default {
       try {
         const res = await this.chapterStore.fetchReadingHistory(page, this.readingHistoryPagination.size)
         if (res) {
-          this.readingHistory = res.records || []
+          // 兼容后端可能返回的不同数据结构
+          const records = res.records || res.items || res || []
+          this.readingHistory = Array.isArray(records) ? records : []
+          
           this.readingHistoryPagination.current = res.current || page
           this.readingHistoryPagination.size = res.size || this.readingHistoryPagination.size
           this.readingHistoryPagination.total = res.total || 0
           this.readingHistoryPagination.pages = res.pages || 0
         }
+      } catch (e) {
+        console.error('加载阅读历史失败:', e)
       } finally {
         this.loading.history = false
       }

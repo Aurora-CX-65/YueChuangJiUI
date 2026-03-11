@@ -237,9 +237,18 @@ const saveProgress = async (cId = chapterId.value) => {
   startTime = Date.now();
   
   try {
+    // 确保参数为数字类型
+    const bId = Number(bookId.value);
+    const chId = Number(cId);
+    
+    if (isNaN(bId) || isNaN(chId)) {
+        console.warn('Invalid bookId or chapterId for saving progress');
+        return;
+    }
+
     await ReadingProgressService.recordReading({
-      bookId: bookId.value,
-      chapterId: cId,
+      bookId: bId,
+      chapterId: chId,
       position: Math.floor(window.scrollY || 0), // 确保是整数
       readingTime: duration
     });

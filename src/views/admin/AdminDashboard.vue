@@ -179,29 +179,37 @@ export default {
     async loadStats() {
       this.loading = true
       try {
-        const [stats, review] = await Promise.all([
-          AdminService.getSystemStats(),
-          AdminService.getReviewStats()
-        ])
-        this.stats = stats || {}
-        this.reviewStats = review || {}
-        const v = this.systemInfo?.uptime
-        if (typeof v === 'number' && v > 0) {
-          const derivedStart = v > 946684800000 ? v : (Date.now() - v)
-          const cached = Number(localStorage.getItem('admin-start-at'))
-          if (cached && cached > 0 && cached < Date.now()) {
-            this.startAtMs = cached
-          } else {
-            this.startAtMs = derivedStart
-            localStorage.setItem('admin-start-at', String(this.startAtMs))
+        // 分开加载，避免一个失败影响另一个
+        try {
+          const stats = await AdminService.getSystemStats()
+          this.stats = stats || {}
+          
+          // 处理运行时间
+          const v = this.systemInfo?.uptime
+          if (typeof v === 'number' && v > 0) {
+            const derivedStart = v > 946684800000 ? v : (Date.now() - v)
+            const cached = Number(localStorage.getItem('admin-start-at'))
+            if (cached && cached > 0 && cached < Date.now()) {
+              this.startAtMs = cached
+            } else {
+              this.startAtMs = derivedStart
+              localStorage.setItem('admin-start-at', String(this.startAtMs))
+            }
+            if (this.uptimeTimerId) clearInterval(this.uptimeTimerId)
+            this.uptimeTimerId = setInterval(() => {
+              this.nowMs = Date.now()
+            }, 1000)
           }
-          if (this.uptimeTimerId) clearInterval(this.uptimeTimerId)
-          this.uptimeTimerId = setInterval(() => {
-            this.nowMs = Date.now()
-          }, 1000)
+        } catch (e) {
+          console.error('加载系统统计失败:', e)
         }
-      } catch (e) {
-        console.error('加载仪表盘统计失败:', e)
+
+        try {
+          const review = await AdminService.getReviewStats()
+          this.reviewStats = review || {}
+        } catch (e) {
+          console.error('加载审核统计失败:', e)
+        }
       } finally {
         this.loading = false
       }

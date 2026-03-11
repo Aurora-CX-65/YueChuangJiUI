@@ -9,6 +9,7 @@ import { AuthService } from '@/services/auth-service.js'
 import { UserService } from '@/services/user-service.js'
 import { TokenManager } from '@/utils/token-manager.js'
 import { AdminPermissionChecker } from '@/utils/admin/admin-permission-checker.js'
+import { isAuthor, isEditor, isAdmin } from '@/utils/role-converter.js'
 import { 
   createPersistConfig, 
   createLoadingState, 
@@ -93,20 +94,27 @@ export const useUserStore = defineStore('user', {
     /**
      * 是否为作者
      */
-    isAuthor: (state) => state.currentUser?.role === 'author' || state.currentUser?.role === 'admin',
+    isAuthor: (state) => isAuthor(state.currentUser?.role),
     
+    /**
+     * 是否为编辑
+     */
+    isEditor: (state) => isEditor(state.currentUser?.role),
+
     /**
      * 是否为管理员
      */
-    isAdmin: (state) => {
-      if (!state.currentUser?.role) return false;
-      return ['ADMIN', 'SUPER_ADMIN'].includes(state.currentUser.role.toUpperCase());
-    },
+    isAdmin: (state) => isAdmin(state.currentUser?.role),
     
     /**
      * 是否为超级管理员
      */
     isSuperAdmin: (state) => {
+      // isSuperAdmin 并没有在 role-converter 中导出（或者实现不同），这里保留原有逻辑或使用 role-converter
+      // 检查 role-converter 发现没有 isSuperAdmin 导出，但有 ROLE_LEVELS
+      // 简单起见，这里手动实现，或者检查 role-converter 是否有
+      // 刚才的 read 结果显示 role-converter 没有 isSuperAdmin 导出，只有 isAdmin
+      // AdminPermissionChecker 有 isSuperAdmin
       if (!state.currentUser?.role) return false;
       return state.currentUser.role.toUpperCase() === 'SUPER_ADMIN';
     },

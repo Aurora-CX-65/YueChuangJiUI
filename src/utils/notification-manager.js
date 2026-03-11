@@ -1,3 +1,5 @@
+import { ElMessage } from 'element-plus'
+
 /**
  * 通知管理器
  * 提供统一的通知显示接口，支持多种通知组件
@@ -105,6 +107,22 @@ class NotificationManager {
    * @returns {boolean} 是否成功显示
    */
   tryElementPlus(notification) {
+    // 优先尝试使用导入的 ElMessage
+    if (typeof ElMessage !== 'undefined') {
+      try {
+        ElMessage({
+          type: notification.type,
+          message: notification.message,
+          duration: notification.duration,
+          showClose: notification.showClose
+        })
+        return true
+      } catch (error) {
+        console.warn('Element Plus通知显示失败:', error)
+      }
+    }
+    
+    // 降级尝试全局挂载的 ElMessage
     if (typeof window !== 'undefined' && window.ElMessage) {
       try {
         window.ElMessage({
@@ -115,7 +133,7 @@ class NotificationManager {
         })
         return true
       } catch (error) {
-        console.warn('Element Plus通知显示失败:', error)
+        console.warn('全局 Element Plus通知显示失败:', error)
       }
     }
     return false

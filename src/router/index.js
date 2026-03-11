@@ -147,11 +147,13 @@ const routes = [
   {
     path: '/author',
     component: () => import('../layouts/AuthorLayout.vue'),
-    redirect: '/author/dashboard',
+    // 移除这里的 redirect 属性，完全由路由守卫 beforeEachGuard 处理分流
     meta: {
-      requiresRole: 'author'
+      // 允许 author 和 editor 访问
+      requiresRole: ['author', 'editor']
     },
     children: [
+      // === 作者专用路由 ===
       {
         path: 'dashboard',
         name: 'AuthorDashboard',
@@ -167,16 +169,12 @@ const routes = [
       {
         path: 'books/create',
         name: 'AuthorBookCreate',
-        // 暂时指向一个占位或复用组件，或者先指向 Dashboard
-        // 我们需要创建 AuthorBookCreate.vue，但还没创建
-        // 先创建 AuthorBookCreate.vue
         component: () => import('../views/author/AuthorBookCreate.vue'),
         meta: { title: '作者中心 - 创建新书', requiresRole: 'author' }
       },
       {
         path: 'books/:id/edit',
         name: 'AuthorBookEdit',
-        // 还没创建
         component: () => import('../views/author/AuthorBookEdit.vue'),
         meta: { title: '作者中心 - 编辑书籍', requiresRole: 'author' }
       },
@@ -227,6 +225,38 @@ const routes = [
         name: 'AuthorSettings',
         component: () => import('../views/author/AuthorSettings.vue'),
         meta: { title: '作者中心 - 创作设置', requiresRole: 'author' }
+      },
+
+      // === 编辑专用路由（复用 Admin 组件） ===
+      {
+        path: 'review-dashboard',
+        name: 'EditorDashboard',
+        component: () => import('../views/author/EditorDashboard.vue'),
+        meta: { title: '编辑中心 - 仪表盘', requiresRole: 'editor' }
+      },
+      {
+        path: 'book-reviews',
+        name: 'EditorBookReviews',
+        component: () => import('../views/admin/AdminBookReviews.vue'),
+        meta: { title: '编辑中心 - 书籍审核', requiresRole: 'editor' }
+      },
+      {
+        path: 'chapter-reviews',
+        name: 'EditorChapterReviews',
+        component: () => import('../views/admin/AdminChapterReviews.vue'),
+        meta: { title: '编辑中心 - 章节审核', requiresRole: 'editor' }
+      },
+      {
+        path: 'comment-reviews',
+        name: 'EditorCommentReviews',
+        component: () => import('../views/admin/AdminCommentReviews.vue'),
+        meta: { title: '编辑中心 - 评论审核', requiresRole: 'editor' }
+      },
+      {
+        path: 'author-applications',
+        name: 'EditorAuthorApplications',
+        component: () => import('../views/admin/AdminAuthorApplications.vue'),
+        meta: { title: '编辑中心 - 作者申请', requiresRole: 'editor' }
       }
     ]
   },

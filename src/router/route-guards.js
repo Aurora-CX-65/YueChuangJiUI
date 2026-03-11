@@ -136,6 +136,17 @@ export async function beforeEachGuard(to, from, next) {
     }
   }
 
+  // 针对 /author 根路径的重定向逻辑
+  if (to.path === '/author') {
+    if (isEditor(userRole)) {
+      next('/author/review-dashboard')
+      return
+    }
+    // 默认为作者仪表盘
+    next('/author/dashboard')
+    return
+  }
+
   // 权限检查通过，继续导航
   next()
 }

@@ -18,6 +18,12 @@
             <el-option label="临时封禁" value="suspended" />
             <el-option label="永久封禁" value="banned" />
           </el-select>
+          <el-select v-model="sortOption" placeholder="排序" size="small" style="width:140px" @change="handleFilter">
+            <el-option label="默认排序(ID正序)" value="id_asc" />
+            <el-option label="ID倒序" value="id_desc" />
+            <el-option label="注册时间正序" value="time_asc" />
+            <el-option label="注册时间倒序" value="time_desc" />
+          </el-select>
           <el-button size="small" type="primary" @click="loadUsers">搜索</el-button>
           <el-button size="small" @click="reset">重置</el-button>
           <el-dropdown :disabled="!selectedRows.length" @command="handleBatchCommand">
@@ -41,23 +47,23 @@
         <div class="table-wrapper" v-else>
         <el-table :data="users" border size="small" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="55" />
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="username" label="用户名" width="160" />
-          <el-table-column prop="nickname" label="昵称" width="160" />
-          <el-table-column prop="email" label="邮箱" width="220" />
-          <el-table-column label="角色" width="120">
+          <el-table-column prop="id" label="ID" width="70" />
+          <el-table-column prop="username" label="用户名" width="150" />
+          <el-table-column prop="nickname" label="昵称" width="150" />
+          <el-table-column prop="email" label="邮箱" width="200" />
+          <el-table-column label="角色" width="90">
             <template #default="{ row }">{{ roleLabel(row.role) }}</template>
           </el-table-column>
-          <el-table-column label="状态" width="120">
+          <el-table-column label="状态" width="90">
             <template #default="{ row }">{{ statusLabel(row.status) }}</template>
           </el-table-column>
-          <el-table-column label="创建时间" width="180">
+          <el-table-column label="创建时间" width="160">
             <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
           </el-table-column>
           <el-table-column label="操作" width="420" fixed="right">
             <template #default="{ row }">
               <el-space wrap>
-                <el-select v-model="row._role" size="small" style="width:140px">
+                <el-select v-model="row._role" size="small" style="width:85px">
                   <el-option label="读者" value="reader" />
                   <el-option label="作者" value="author" />
                   <el-option label="编辑" value="editor" />
@@ -175,6 +181,7 @@ export default {
       keyword: '',
       role: '',
       status: '',
+      sortOption: 'id_asc',
       suspendVisible: false,
       banVisible: false,
       banLogsVisible: false,
@@ -219,12 +226,30 @@ export default {
     async loadUsers() {
       this.loading = true
       try {
+        let sort = 'id'
+        let order = 'asc'
+        
+        if (this.sortOption === 'id_desc') {
+          sort = 'id'
+          order = 'desc'
+        } else if (this.sortOption === 'time_asc') {
+          sort = 'created_at'
+          order = 'asc'
+        } else if (this.sortOption === 'time_desc') {
+          sort = 'created_at'
+          order = 'desc'
+        }
+        
+        console.log('Loading users with sort:', sort, order)
+        
         const res = await AdminService.getUsers({
           page: this.page,
           size: this.size,
           keyword: this.keyword.trim(),
           role: this.role,
-          status: this.status
+          status: this.status,
+          sort,
+          order
         })
         const records = res?.records || []
         // 为每行加一个可编辑角色字段
@@ -244,6 +269,7 @@ export default {
       this.keyword = ''
       this.role = ''
       this.status = ''
+      this.sortOption = 'id_asc'
       this.page = 1
       this.loadUsers()
     },
@@ -262,8 +288,10 @@ export default {
       try {
         await AdminService.updateUserRole(row.id, row._role)
         row.role = row._role
+        window.notificationManager.success('角色更新成功')
       } catch (e) {
         console.error('更新用户角色失败:', e)
+        window.notificationManager.error(e.message || '更新用户角色失败')
       } finally {
         this.actionLoading = false
       }
@@ -273,9 +301,10 @@ export default {
       this.actionLoading = true
       try {
         const newPwd = await AdminService.resetUserPassword(row.id)
-        window.notificationManager && window.notificationManager.info(`新密码：${newPwd}`)
+        window.notificationManager.info(`重置成功，新密码：${newPwd}`, { duration: 10000 })
       } catch (e) {
         console.error('重置密码失败:', e)
+        window.notificationManager.error(e.message || '重置密码失败')
       } finally {
         this.actionLoading = false
       }
@@ -289,20 +318,22 @@ export default {
       if (!this.actionUser) return
       const reason = (this.suspendForm.reason || '').trim()
       if (!reason) {
-        window.notificationManager && window.notificationManager.error('请填写封禁原因')
+        window.notificationManager.error('请填写封禁原因')
         return
       }
       if (!this.suspendForm.until) {
-        window.notificationManager && window.notificationManager.error('请选择到期时间')
+        window.notificationManager.error('请选择到期时间')
         return
       }
       this.actionLoading = true
       try {
         await AdminService.suspendUser(this.actionUser.id, this.suspendForm.until, reason)
         this.suspendVisible = false
+        window.notificationManager.success('用户临时封禁成功')
         this.loadUsers()
       } catch (e) {
         console.error('临时封禁失败:', e)
+        window.notificationManager.error(e.message || '临时封禁失败')
       } finally {
         this.actionLoading = false
       }
@@ -318,9 +349,11 @@ export default {
       try {
         await AdminService.banUser(this.actionUser.id, this.banForm.reason)
         this.banVisible = false
+        window.notificationManager.success('用户永久封禁成功')
         this.loadUsers()
       } catch (e) {
         console.error('永久封禁失败:', e)
+        window.notificationManager.error(e.message || '永久封禁失败')
       } finally {
         this.actionLoading = false
       }
@@ -330,9 +363,11 @@ export default {
       this.actionLoading = true
       try {
         await AdminService.unbanUser(row.id)
+        window.notificationManager.success('用户解封成功')
         this.loadUsers()
       } catch (e) {
         console.error('解除封禁失败:', e)
+        window.notificationManager.error(e.message || '解除封禁失败')
       } finally {
         this.actionLoading = false
       }
@@ -374,11 +409,11 @@ export default {
     async confirmBatch() {
       if (this.batchAction !== 'unban') {
         if (!this.batchForm.reason.trim()) {
-          window.notificationManager && window.notificationManager.error('请填写原因')
+          window.notificationManager.error('请填写原因')
           return
         }
         if (this.batchAction === 'suspend' && !this.batchForm.until) {
-          window.notificationManager && window.notificationManager.error('请选择到期时间')
+          window.notificationManager.error('请选择到期时间')
           return
         }
       }
@@ -387,6 +422,7 @@ export default {
       try {
         const ids = this.selectedRows.map(r => r.id)
         let successCount = 0
+        let failCount = 0
         
         // 由于没有后端批量接口，这里使用循环调用（前端模拟批量）
         // 实际生产环境建议增加后端批量接口
@@ -402,17 +438,22 @@ export default {
             successCount++
           } catch (e) {
             console.error(`用户 ${id} 操作失败:`, e)
+            failCount++
           }
         }
         
-        if (window.notificationManager) {
-          window.notificationManager.success(`批量操作完成，成功 ${successCount}/${ids.length}`)
+        if (successCount > 0) {
+          window.notificationManager.success(`批量操作完成，成功 ${successCount} 个${failCount > 0 ? '，失败 ' + failCount + ' 个' : ''}`)
+        } else if (failCount > 0) {
+          window.notificationManager.error(`批量操作失败，共 ${failCount} 个失败`)
         }
+        
         this.batchVisible = false
         this.selectedRows = []
         this.loadUsers()
       } catch (e) {
         console.error('批量操作异常:', e)
+        window.notificationManager.error(e.message || '批量操作异常')
       } finally {
         this.actionLoading = false
       }

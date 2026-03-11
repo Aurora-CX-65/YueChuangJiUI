@@ -286,9 +286,28 @@ export class ResponseInterceptors {
       }
     }
 
-    // 使用错误处理器处理错误（开启全局错误提示）
+    // 判断是否是业务错误或HTTP错误（不等于200），如果是，通常由业务层处理，这里不再显示全局通知
+    // 除非请求选项显式指定了 showNotification: true
+    let shouldNotify = true
+    
+    const code = error.code || error.status
+    
+    // 如果请求显式关闭了通知，则不显示
+    if (originalOptions.showNotification === false) {
+      shouldNotify = false
+    } 
+    // 如果是业务错误（code!=200）或客户端错误（4xx），且没有显式要求显示通知
+    // 默认不显示全局通知，交给业务层（如LoginForm）处理
+    else if (code && code !== 200 && originalOptions.showNotification !== true) {
+      // 对于5xx服务器错误，如果业务层没处理，最好还是提示一下
+      // 这里简化逻辑：只要是错误且未显式要求通知，就默认不通知，避免重复
+      // 尤其是401/403等由handleSpecialErrors处理的错误
+      shouldNotify = false
+    }
+
+    // 使用错误处理器处理错误
     ErrorHandler.handleError(error, {
-      showNotification: true
+      showNotification: shouldNotify
     })
 
     throw error
