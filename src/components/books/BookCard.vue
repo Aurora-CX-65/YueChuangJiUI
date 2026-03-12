@@ -1,5 +1,13 @@
 <template>
-  <div class="book-card" :class="{ 'list-view': listView }">
+  <div 
+    class="book-card" 
+    :class="{ 'list-view': listView }"
+    @mousedown="startPress"
+    @touchstart="startPress"
+    @mouseup="cancelPress"
+    @mouseleave="cancelPress"
+    @touchend="cancelPress"
+  >
     <div class="card h-100" @click="goToBookDetail">
       <div class="book-card-content">
         <!-- 左侧：书籍封面 -->
@@ -109,9 +117,12 @@ export default {
   },
   data() {
     return {
-      imageError: false
+      imageError: false,
+      pressTimer: null,
+      isLongPress: false
     }
   },
+  emits: ['long-press'],
   computed: {
     /**
      * 书籍封面图片
@@ -200,6 +211,9 @@ export default {
      * 跳转到书籍详情页
      */
     goToBookDetail() {
+      // 触发长按检测，如果是长按则不跳转
+      if (this.isLongPress) return
+
       if (this.customLink) {
         this.$router.push(this.customLink)
       } else {
@@ -297,6 +311,21 @@ export default {
       if (!text) return ''
       if (text.length <= maxLength) return text
       return text.substring(0, maxLength) + '...'
+    },
+
+    // 长按事件处理
+    startPress() {
+      this.isLongPress = false
+      this.pressTimer = setTimeout(() => {
+        this.isLongPress = true
+        this.$emit('long-press')
+      }, 800) // 800ms 视为长按
+    },
+    cancelPress() {
+      if (this.pressTimer) {
+        clearTimeout(this.pressTimer)
+        this.pressTimer = null
+      }
     }
   }
 }

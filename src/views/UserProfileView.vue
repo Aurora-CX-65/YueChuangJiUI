@@ -86,7 +86,7 @@
                 <div class="book-info">
                   <h3 class="book-title">{{ book.title }}</h3>
                   <div class="book-meta">
-                    <el-tag size="small" type="info">{{ book.category?.name || '未分类' }}</el-tag>
+                    <el-tag size="small" type="info">{{ book.categoryName || '未分类' }}</el-tag>
                     <span class="status-text">{{ getStatusText(book.status) }}</span>
                   </div>
                   <p class="book-desc">{{ book.description || '暂无简介' }}</p>
@@ -119,7 +119,7 @@
                 <div class="book-info">
                   <h3 class="book-title">{{ book.title }}</h3>
                   <div class="book-meta">
-                    <span class="author-name">作者: {{ book.authorName || book.penName }}</span>
+                    <span class="author-name">作者: {{ book.penName || book.authorUsername }}</span>
                     <el-tag size="small" type="info">{{ book.categoryName || '未分类' }}</el-tag>
                   </div>
                   <p class="book-desc">{{ book.description || '暂无简介' }}</p>

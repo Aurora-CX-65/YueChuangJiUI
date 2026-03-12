@@ -114,10 +114,18 @@ class HttpClient {
    * @returns {Promise} fetch Promise
    */
   createTimeoutFetch(url, options) {
+    // 默认超时时间
+    let timeout = this.timeout
+    
+    // 针对AI接口延长超时时间（例如延长到120秒）
+    if (url.includes('/api/ai/')) {
+      timeout = 120000 
+    }
+
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error(`请求超时: ${this.timeout}ms`))
-      }, this.timeout)
+        reject(new Error(`请求超时: ${timeout}ms`))
+      }, timeout)
 
       fetch(url, options)
         .then(response => {
@@ -269,15 +277,21 @@ class HttpClient {
    * @returns {Promise} 响应数据
    */
   async upload(url, formData, options = {}) {
-    // 文件上传不设置Content-Type，让浏览器自动设置
+    // 文件上传不设置Content-Type，让浏览器自动设置 (fetch API 会自动处理 multipart/form-data boundary)
     const uploadOptions = { ...options }
-    if (uploadOptions.headers) {
-      delete uploadOptions.headers['Content-Type']
-    }
-
+    
+    // 如果 options 中有 headers，复制一份并删除 Content-Type
+    // 确保 this.defaultHeaders 中的 Content-Type 也被覆盖/移除
+    // 在 fetch 中，如果 body 是 FormData，浏览器会自动设置 Content-Type: multipart/form-data; boundary=...
+    // 如果我们手动设置了 Content-Type，会覆盖浏览器的行为，导致 boundary 丢失，从而报错 "no multipart boundary was found"
+    
+    const headers = { ...this.defaultHeaders, ...uploadOptions.headers }
+    delete headers['Content-Type']
+    
     return this.request(url, {
       method: 'POST',
       body: formData,
+      headers: headers,
       ...uploadOptions
     })
   }

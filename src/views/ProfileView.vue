@@ -16,6 +16,7 @@
           </div>
           <div class="profile-actions">
             <el-button size="small" @click="openEdit">编辑资料</el-button>
+            <el-button size="small" type="warning" @click="openPasswordDialog">修改密码</el-button>
             <el-upload
               :show-file-list="false"
               :auto-upload="false"
@@ -96,6 +97,30 @@
             </el-tab-pane>
 
             <el-tab-pane label="收藏书籍" name="favorites">
+              <div class="tab-actions mb-3">
+                <el-button 
+                  v-if="!isManageMode" 
+                  type="primary" 
+                  link 
+                  @click="isManageMode = true"
+                >
+                  管理
+                </el-button>
+                <div v-else class="manage-actions">
+                  <el-checkbox 
+                    v-model="isAllSelected" 
+                    :indeterminate="isIndeterminate"
+                    @change="handleSelectAll"
+                  >
+                    全选
+                  </el-checkbox>
+                  <el-button type="danger" size="small" :disabled="selectedBooks.length === 0" @click="handleBatchDelete">
+                    删除({{ selectedBooks.length }})
+                  </el-button>
+                  <el-button size="small" @click="cancelManageMode">完成</el-button>
+                </div>
+              </div>
+
               <div v-if="loading.favorites" class="loading-container">
                 <el-skeleton :rows="4" animated />
               </div>
@@ -111,7 +136,15 @@
                     :sm="12"
                     :xs="24"
                   >
-                    <BookCard :book="book" />
+                    <div class="book-card-wrapper" :class="{ 'is-managing': isManageMode }">
+                      <BookCard 
+                        :book="book" 
+                        @long-press="handleLongPress(book)"
+                      />
+                      <div v-if="isManageMode" class="book-select-mask" @click.stop="toggleSelect(book)">
+                        <el-checkbox :model-value="selectedBooks.includes(book.id)" @click.stop="toggleSelect(book)" />
+                      </div>
+                    </div>
                   </el-col>
                 </el-row>
                 <div v-if="favoritePagination.pages > 1" class="pagination">
@@ -266,6 +299,24 @@
         <el-button type="primary" :loading="saving" @click="saveProfile">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="passwordVisible" title="修改密码" width="400px">
+      <el-form :model="passwordForm" label-width="100px" :rules="passwordRules" ref="passwordFormRef">
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="6-20个字符" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordVisible = false">取消</el-button>
+        <el-button type="primary" :loading="changingPassword" @click="submitChangePassword">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -278,6 +329,9 @@ import BookCard from '@/components/books/BookCard.vue'
 import { formatDate } from '@/utils/formatters'
 import { useRoute } from 'vue-router'
 import { watch } from 'vue'
+
+import { UserService } from '@/services/user-service.js'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
 export default {
   name: 'ProfileView',
@@ -298,6 +352,8 @@ export default {
       myBooksPagination: { current: 1, size: 12, total: 0, pages: 0 },
       favoriteBooks: [],
       favoritePagination: { current: 1, size: 12, total: 0, pages: 0 },
+      isManageMode: false,
+      selectedBooks: [],
       readingHistory: [],
       readingHistoryPagination: { current: 1, size: 10, total: 0, pages: 0 },
       following: [],
@@ -311,7 +367,34 @@ export default {
         phone: '',
         bio: ''
       },
-      saving: false
+      saving: false,
+      passwordVisible: false,
+      passwordForm: {
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      },
+      changingPassword: false,
+      passwordRules: {
+        oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+        newPassword: [
+          { required: true, message: '请输入新密码', trigger: 'blur' },
+          { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+        ],
+        confirmPassword: [
+          { required: true, message: '请再次输入新密码', trigger: 'blur' },
+          {
+            validator: (rule, value, callback) => {
+              if (value !== this.passwordForm.newPassword) {
+                callback(new Error('两次输入密码不一致'))
+              } else {
+                callback()
+              }
+            },
+            trigger: 'blur'
+          }
+        ]
+      }
     }
   },
   setup() {
@@ -341,6 +424,19 @@ export default {
       if (newTab) {
         this.activeTab = newTab
       }
+    }
+  },
+  computed: {
+    isAllSelected: {
+      get() {
+        return this.favoriteBooks.length > 0 && this.selectedBooks.length === this.favoriteBooks.length
+      },
+      set(val) {
+        this.handleSelectAll(val)
+      }
+    },
+    isIndeterminate() {
+      return this.selectedBooks.length > 0 && this.selectedBooks.length < this.favoriteBooks.length
     }
   },
   methods: {
@@ -526,6 +622,33 @@ export default {
         this.saving = false
       }
     },
+    openPasswordDialog() {
+      this.passwordForm.oldPassword = ''
+      this.passwordForm.newPassword = ''
+      this.passwordForm.confirmPassword = ''
+      this.passwordVisible = true
+    },
+    async submitChangePassword() {
+      if (!this.$refs.passwordFormRef) return
+      
+      await this.$refs.passwordFormRef.validate(async (valid) => {
+        if (valid) {
+          this.changingPassword = true
+          try {
+            await UserService.changePassword(this.passwordForm)
+            window.notificationManager && window.notificationManager.success('密码修改成功，请重新登录')
+            this.passwordVisible = false
+            // 退出登录
+            await this.userStore.logout()
+            this.$router.push('/auth/login')
+          } catch (error) {
+            console.error('修改密码失败:', error)
+          } finally {
+            this.changingPassword = false
+          }
+        }
+      })
+    },
     async handleAvatarSelect(file) {
       const raw = file.raw || file
       if (!raw) return
@@ -538,6 +661,58 @@ export default {
     },
     goUser(userId) {
       this.$router.push(`/users/${userId}`)
+    },
+    // 管理模式相关方法
+    toggleSelect(book) {
+      const index = this.selectedBooks.indexOf(book.id)
+      if (index === -1) {
+        this.selectedBooks.push(book.id)
+      } else {
+        this.selectedBooks.splice(index, 1)
+      }
+    },
+    handleSelectAll(val) {
+      this.selectedBooks = val ? this.favoriteBooks.map(b => b.id) : []
+    },
+    cancelManageMode() {
+      this.isManageMode = false
+      this.selectedBooks = []
+    },
+    handleLongPress(book) {
+      if (!this.isManageMode) {
+        this.isManageMode = true
+        this.toggleSelect(book)
+      }
+    },
+    async handleBatchDelete() {
+      if (this.selectedBooks.length === 0) return
+      
+      try {
+        await ElMessageBox.confirm(
+          `确定要删除选中的 ${this.selectedBooks.length} 本书籍吗？`,
+          '批量删除',
+          {
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        )
+        
+        // 批量删除逻辑
+        // 由于后端可能没有批量删除接口，这里循环调用 unfavoriteBook
+        // 建议后端添加批量接口以优化性能
+        const promises = this.selectedBooks.map(id => this.bookStore.unfavoriteBook(id))
+        await Promise.all(promises)
+        
+        ElMessage.success('删除成功')
+        this.cancelManageMode()
+        this.loadFavorites(1) // 重新加载第一页
+      } catch (e) {
+        if (e !== 'cancel') {
+          console.error('批量删除失败:', e)
+          ElMessage.error('删除失败')
+        }
+      }
     }
   }
 }
@@ -698,6 +873,33 @@ export default {
 }
 .history-action {
   flex-shrink: 0;
+}
+
+/* Manage Mode Styles */
+.book-card-wrapper {
+  position: relative;
+  height: 100%;
+}
+.book-card-wrapper.is-managing .book-card {
+  pointer-events: none; /* 禁用卡片原有点击事件 */
+}
+.book-select-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px;
+}
+.manage-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 @media (max-width: 768px) {

@@ -279,7 +279,12 @@ export default {
   min-height: 100%;
 }
 
-.carousel-section, .popular-categories, .popular-books {
+.carousel-section {
+  max-width: 1600px;
+  margin: 0 auto 40px auto;
+}
+
+.popular-categories, .popular-books {
   margin-bottom: 40px;
 }
 
@@ -334,7 +339,7 @@ h2 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  max-width: 1200px;
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -366,7 +371,7 @@ h2 {
 
 /* 分类容器样式 */
 .categories-container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -525,7 +530,7 @@ h2 {
 
 /* 热门书籍区域样式 */
 .books-container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 

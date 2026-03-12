@@ -148,7 +148,9 @@ export default {
       try {
         const res = await OutlineService.getOutlines(bookId, { page: 1, size: 100 })
         if (res) {
-          outlines.value = (res.records || []).sort((a, b) => a.sortOrder - b.sortOrder)
+          // 兼容分页和列表返回格式
+          const list = Array.isArray(res) ? res : (res.records || [])
+          outlines.value = list.sort((a, b) => a.sortOrder - b.sortOrder)
         }
       } catch (e) {
         console.error(e)

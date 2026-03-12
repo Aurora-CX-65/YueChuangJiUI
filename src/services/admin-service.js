@@ -352,10 +352,6 @@ export class AdminService {
   static async uploadBannerImage(file) {
     const formData = new FormData()
     formData.append('file', file)
-    return await httpClient.post('/api/admin/banners/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    return await httpClient.upload('/api/admin/banners/upload', formData)
   }
 }

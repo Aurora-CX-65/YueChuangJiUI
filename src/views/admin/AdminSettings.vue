@@ -29,7 +29,19 @@
                   <div class="form-tip">限制每个用户每日调用 AI 功能（自动纠错、内容续写等）的总次数，0 表示无限制。</div>
                 </el-form-item>
                 <el-form-item label="AI模型">
-                  <el-input v-model="form['ai.deepseek_model']" placeholder="deepseek-chat" />
+                  <el-select
+                    v-model="form['ai.deepseek_model']"
+                    placeholder="请选择或输入模型名称"
+                    allow-create
+                    filterable
+                    default-first-option
+                    style="width: 100%"
+                  >
+                    <el-option label="DeepSeek Chat (V3)" value="deepseek-chat" />
+                    <el-option label="DeepSeek Coder" value="deepseek-coder" />
+                    <el-option label="DeepSeek Reasoner (R1)" value="deepseek-reasoner" />
+                  </el-select>
+                  <div class="form-tip">支持选择常用模型，或直接输入自定义模型名称。</div>
                 </el-form-item>
                 <el-form-item label="AI API Key">
                   <el-input v-model="form['ai.deepseek_api_key']" type="password" show-password placeholder="请输入密钥" />

@@ -42,7 +42,7 @@
               <el-button size="small" type="primary" plain @click="handleAiCorrect" :loading="aiLoading">
                 <el-icon class="mr-1"><MagicStick /></el-icon> AI 纠错
               </el-button>
-              <el-button size="small" type="primary" plain @click="handleAiContinue" :loading="aiLoading">
+              <el-button size="small" type="primary" plain @click="openAiOptionsDialog" :loading="aiLoading">
                 <el-icon class="mr-1"><Edit /></el-icon> AI 续写
               </el-button>
             </el-button-group>
@@ -60,14 +60,49 @@
     </el-card>
 
     <!-- AI 结果确认对话框 -->
-    <el-dialog v-model="aiDialogVisible" :title="aiDialogTitle" width="600px">
-      <div class="ai-result-preview">
+    <el-dialog v-model="aiDialogVisible" :title="aiDialogTitle" width="600px" :close-on-click-modal="false" :close-on-press-escape="false">
+      <div v-if="aiLoading" class="ai-loading-container">
+        <div class="ai-loading-animation">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        <p class="mt-3 text-gray-500">AI 正在思考中，请稍候...</p>
+        <p class="text-xs text-gray-400">生成长段落可能需要 1-2 分钟</p>
+      </div>
+      <div v-else class="ai-result-preview">
         <div class="mb-2 font-bold">AI 生成结果：</div>
         <div class="p-3 bg-gray-50 rounded border result-text">{{ aiResult }}</div>
       </div>
       <template #footer>
-        <el-button @click="aiDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="applyAiResult">采纳并应用</el-button>
+        <div v-if="!aiLoading">
+          <el-button @click="aiDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="applyAiResult">采纳并应用</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- AI 续写选项对话框 -->
+    <el-dialog v-model="aiOptionsDialogVisible" title="AI 续写设置" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="续写字数">
+          <el-slider v-model="aiOptions.wordCount" :min="50" :max="1000" :step="50" show-input />
+        </el-form-item>
+        <el-form-item label="临时提示词（可选）">
+          <el-input 
+            v-model="aiOptions.prompt" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="例如：请增加一些环境描写，或者让主角遇到一个新角色..." 
+            maxlength="500"
+            show-word-limit
+          />
+          <div class="text-xs text-gray-400 mt-1">此提示词仅对本次续写生效，不会被保存。</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="aiOptionsDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleAiContinue" :loading="aiLoading">开始生成</el-button>
       </template>
     </el-dialog>
 
@@ -316,7 +351,6 @@ export default {
       })
     }
 
-    // AI 功能实现
     const handleAiCorrect = async () => {
         const text = form.content.replace(/<[^>]+>/g, '').trim()
         if (!text || text.length < 10) {
@@ -324,47 +358,74 @@ export default {
             return
         }
 
+        aiDialogTitle.value = 'AI 正在纠错...'
+        aiDialogVisible.value = true // 立即显示对话框以展示 loading 动画
         aiLoading.value = true
+        
         try {
-            // 获取选中的文本，如果 TinyMCE 支持获取选区，否则对全文纠错
-            // 这里简单对全文纠错，或者截取一部分
-            // 考虑到 token 限制，建议只对最近的段落或全文进行处理
-            // 为简化，这里发送全部纯文本
             const result = await AiService.autoCorrect(text)
             if (result) {
                 aiResult.value = result
                 aiDialogTitle.value = 'AI 自动纠错结果'
                 aiActionType.value = 'correct'
-                aiDialogVisible.value = true
+            } else {
+                aiDialogVisible.value = false
             }
         } catch (error) {
             console.error(error)
+            aiDialogVisible.value = false
         } finally {
             aiLoading.value = false
         }
     }
 
+    const aiOptionsDialogVisible = ref(false)
+    const aiOptions = reactive({
+        wordCount: 200,
+        prompt: ''
+    })
+
+    const openAiOptionsDialog = () => {
+        const text = form.content.replace(/<[^>]+>/g, '').trim()
+        if (!text) {
+            ElMessage.warning('请先输入一些内容作为续写的上下文')
+            return
+        }
+        // 重置选项
+        aiOptions.wordCount = 200
+        aiOptions.prompt = ''
+        aiOptionsDialogVisible.value = true
+    }
+
     const handleAiContinue = async () => {
+        // 关闭选项对话框
+        aiOptionsDialogVisible.value = false
+        
         const text = form.content.replace(/<[^>]+>/g, '').trim()
         if (!text) {
             ElMessage.warning('请先输入一些内容作为续写的上下文')
             return
         }
         
-        // 取最后 500 字作为上下文
-        const context = text.slice(-500)
+        // 取最后 1000 字作为上下文（增加上下文长度以提升效果）
+        const context = text.slice(-1000)
         
+        aiDialogTitle.value = 'AI 正在续写...'
+        aiDialogVisible.value = true // 立即显示对话框以展示 loading 动画
         aiLoading.value = true
+        
         try {
-            const result = await AiService.contentContinue(context)
+            const result = await AiService.contentContinue(context, aiOptions.wordCount, aiOptions.prompt)
             if (result) {
                 aiResult.value = result
                 aiDialogTitle.value = 'AI 续写结果'
                 aiActionType.value = 'continue'
-                aiDialogVisible.value = true
+            } else {
+                aiDialogVisible.value = false
             }
         } catch (error) {
             console.error(error)
+            aiDialogVisible.value = false
         } finally {
             aiLoading.value = false
         }
@@ -410,6 +471,9 @@ export default {
       aiDialogVisible,
       aiDialogTitle,
       aiResult,
+      aiOptionsDialogVisible,
+      aiOptions,
+      openAiOptionsDialog,
       applyAiResult,
       versionDrawerVisible,
       versionsLoading,
@@ -427,6 +491,48 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
 }
+/* ... existing styles ... */
+
+.ai-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.ai-loading-animation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background-color: #409eff;
+  border-radius: 50%;
+  margin: 0 5px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
 .header {
   display: flex;
   justify-content: space-between;

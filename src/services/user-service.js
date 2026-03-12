@@ -52,6 +52,18 @@ export class UserService {
   }
 
   /**
+   * 修改密码
+   * @param {Object} data - 修改密码请求参数
+   * @param {string} data.oldPassword - 旧密码
+   * @param {string} data.newPassword - 新密码
+   * @param {string} data.confirmPassword - 确认新密码
+   * @returns {Promise<boolean>} 修改结果
+   */
+  static async changePassword(data) {
+    return await httpClient.put('/api/users/profile/password', data)
+  }
+
+  /**
    * 上传用户头像
    * @param {File} file - 头像文件
    * @returns {Promise<string>} 头像URL

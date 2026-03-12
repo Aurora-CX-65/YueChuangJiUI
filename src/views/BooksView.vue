@@ -181,7 +181,8 @@ export default {
         categoryId: '',
         tagIds: [],
         status: '',
-        keyword: ''
+        keyword: '',
+        updateTime: ''
       }
     }
   },
@@ -251,8 +252,24 @@ export default {
         const params = {
           page: this.currentPage,
           size: this.pageSize,
-          sortBy: this.sortBy,
-          ...this.filters
+          sortBy: this.sortBy
+        }
+        
+        // 仅添加有效参数
+        if (this.filters.keyword && this.filters.keyword.trim()) {
+          params.keyword = this.filters.keyword.trim()
+        }
+        if (this.filters.categoryId) {
+          params.categoryId = this.filters.categoryId
+        }
+        if (this.filters.status) {
+          params.status = this.filters.status
+        }
+        if (this.filters.tagIds && this.filters.tagIds.length > 0) {
+          params.tagIds = this.filters.tagIds
+        }
+        if (this.filters.updateTime) {
+          params.updateTime = this.filters.updateTime
         }
         
         const response = await BookService.searchBooks(params)
@@ -324,7 +341,8 @@ export default {
         categoryId: '',
         tagIds: [],
         status: '',
-        keyword: ''
+        keyword: '',
+        updateTime: ''
       }
       this.currentPage = 1
       this.loadBooks()

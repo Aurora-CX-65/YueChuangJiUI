@@ -24,10 +24,11 @@ export class AiService {
    * 内容续写功能
    * @param {string} content - 需要续写的文本内容
    * @param {number} [wordCount=200] - 续写字数
+   * @param {string} [prompt] - 临时提示词
    * @returns {Promise<string>} 续写后的文本
    */
-  static async contentContinue(content, wordCount = 200) {
-    return await httpClient.post('/api/ai/content-continue', { content, wordCount })
+  static async contentContinue(content, wordCount = 200, prompt = null) {
+    return await httpClient.post('/api/ai/content-continue', { content, wordCount, prompt })
   }
 
   /**

@@ -10,6 +10,7 @@
             @change="handleBookChange"
             style="width: 200px"
           >
+            <el-option label="全部书籍" :value="0" />
             <el-option
               v-for="book in books"
               :key="book.id"
@@ -24,7 +25,6 @@
         <el-skeleton :rows="3" animated />
       </div>
 
-      <el-empty v-else-if="!currentBookId" description="请选择一本书籍查看评论" />
       <el-empty v-else-if="comments.length === 0" description="暂无评论" />
 
       <div v-else class="comments-list">
@@ -32,7 +32,12 @@
           <div class="comment-header">
             <div class="user-info">
               <el-avatar :size="32" :src="comment.userAvatar">{{ (comment.userNickname || comment.username || 'U').charAt(0) }}</el-avatar>
-              <span class="username">{{ comment.userNickname || comment.username }}</span>
+              <div class="user-meta">
+                <span class="username">{{ comment.userNickname || comment.username }}</span>
+                <div class="book-tag" v-if="comment.bookTitle">
+                  <el-tag size="small" type="info" effect="plain">《{{ comment.bookTitle }}》</el-tag>
+                </div>
+              </div>
               <el-rate
                 v-model="comment.rating"
                 disabled
@@ -45,7 +50,7 @@
             <div class="comment-time">{{ formatTime(comment.createdAt) }}</div>
           </div>
           
-          <div class="comment-content">{{ comment.content }}</div>
+          <div class="comment-content" @click="goToBookDetail(comment.bookId)">{{ comment.content }}</div>
           
           <div class="comment-footer">
             <div class="stats">
@@ -53,8 +58,7 @@
                 <el-icon><Pointer /></el-icon> {{ comment.likeCount || 0 }} 点赞
               </span>
             </div>
-            <!-- 由于后端暂不支持直接回复接口，此处暂不提供回复按钮，或后续跳转 -->
-            <!-- <el-button type="primary" link size="small">回复</el-button> -->
+            <el-button link type="primary" size="small" @click="goToBookDetail(comment.bookId)">查看详情</el-button>
           </div>
         </div>
 
@@ -64,7 +68,7 @@
             :page-size="size"
             :total="total"
             layout="prev, pager, next"
-            @current-change="loadComments"
+            @current-change="handlePageChange"
           />
         </div>
       </div>
@@ -79,17 +83,20 @@ import { useUserStore } from '@/stores/user-store'
 import { CommentService } from '@/services/comment-service'
 import { ElMessage } from 'element-plus'
 import { Pointer } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'AuthorComments',
   components: { Pointer },
   setup() {
+    const router = useRouter()
     const bookStore = useBookStore()
     const userStore = useUserStore()
     const books = computed(() => bookStore.myBooks.items)
-    const currentBookId = ref(null)
+    const currentBookId = ref(0) // 0 表示全部书籍
     
     const comments = ref([])
+    const allMixedComments = ref([]) // 用于存储"全部书籍"模式下的所有加载评论
     const loading = ref(false)
     const page = ref(1)
     const size = ref(10)
@@ -101,15 +108,14 @@ export default {
         await userStore.fetchCurrentUser()
       }
 
-      // 确保书籍列表已加载
-      if (bookStore.myBooks.items.length === 0 && userStore.currentUserId) {
-        await bookStore.fetchMyBooks(userStore.currentUserId)
+      // 强制刷新我的书籍列表，防止数据污染或过时
+      if (userStore.currentUserId) {
+        // 加载更多书籍以覆盖大部分情况（例如 100 本）
+        await bookStore.fetchMyBooks(userStore.currentUserId, 1, 100)
       }
-      // 默认选中第一本书
-      if (bookStore.myBooks.items.length > 0) {
-        currentBookId.value = bookStore.myBooks.items[0].id
-        loadComments()
-      }
+      
+      // 默认加载全部
+      loadComments()
     }
 
     const handleBookChange = () => {
@@ -117,22 +123,73 @@ export default {
       loadComments()
     }
 
+    const handlePageChange = (newPage) => {
+      page.value = newPage
+      if (currentBookId.value === 0) {
+        // 客户端分页
+        updateDisplayedComments()
+      } else {
+        // 服务端分页
+        loadComments()
+      }
+    }
+
+    const updateDisplayedComments = () => {
+      const start = (page.value - 1) * size.value
+      const end = start + size.value
+      comments.value = allMixedComments.value.slice(start, end)
+    }
+
+    const formatTime = (time) => {
+      if (!time) return ''
+      return new Date(time).toLocaleString()
+    }
+
     const loadComments = async () => {
-      if (!currentBookId.value) return
-      
       loading.value = true
       try {
-        // 使用 CommentService 获取书籍评论
-        // 假设 API 路径是 /api/comments/book/{bookId}
-        // 这里直接使用 httpClient 或者封装好的 Service
-        // 暂时假设 CommentService 已存在并有 getBookComments 方法
-        // 如果没有，需要创建或直接用 axios
-        
-        // 检查 CommentService 是否可用，如果不可用则需要实现
-        const res = await CommentService.getBookComments(currentBookId.value, page.value, size.value)
-        if (res) {
-            comments.value = res.records || []
+        if (currentBookId.value === 0) {
+          // 加载全部书籍的评论
+          // 由于后端不支持聚合查询，我们需要遍历所有书籍查询
+          // 策略：每本书查询最近的20条评论，然后合并排序
+          if (books.value.length === 0) {
+            comments.value = []
+            total.value = 0
+            return
+          }
+
+          const promises = books.value.map(book => 
+            CommentService.getBookComments(book.id, 1, 20)
+              .then(res => {
+                const list = (res && res.records) || []
+                // 为每条评论附加书籍信息
+                return list.map(c => ({ ...c, bookTitle: book.title, bookId: book.id }))
+              })
+              .catch(err => {
+                console.warn(`Failed to load comments for book ${book.id}`, err)
+                return []
+              })
+          )
+
+          const results = await Promise.all(promises)
+          const merged = results.flat().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          
+          allMixedComments.value = merged
+          total.value = merged.length
+          updateDisplayedComments()
+          
+        } else {
+          // 加载特定书籍的评论
+          const book = books.value.find(b => b.id === currentBookId.value)
+          const res = await CommentService.getBookComments(currentBookId.value, page.value, size.value)
+          if (res) {
+            const list = res.records || []
+            comments.value = list.map(c => ({ 
+              ...c, 
+              bookTitle: book ? book.title : '' 
+            }))
             total.value = res.total || 0
+          }
         }
       } catch (e) {
         console.error(e)
@@ -142,9 +199,18 @@ export default {
       }
     }
 
-    const formatTime = (time) => {
-      if (!time) return ''
-      return new Date(time).toLocaleString()
+    const goToBookDetail = (bookId) => {
+      if (bookId) {
+        // 跳转到书籍详情页的评论区锚点（如果前端实现了锚点逻辑），或者直接跳到详情页
+        // 这里假设书籍详情页路径为 /books/:id
+        // 为了更好的体验，可以传递 query 参数 tab=comments 让详情页自动切换到评论 tab
+        const routeData = router.resolve({ 
+          name: 'BookDetail', 
+          params: { id: bookId },
+          query: { tab: 'comments' }
+        })
+        window.open(routeData.href, '_blank')
+      }
     }
 
     onMounted(() => {
@@ -158,9 +224,11 @@ export default {
       loading,
       page,
       size,
-      total,handleBookChange,
-      loadComments,
-      formatTime
+      total,
+      handleBookChange,
+      handlePageChange,
+      formatTime,
+      goToBookDetail
     }
   }
 }
@@ -193,28 +261,39 @@ export default {
 .comment-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 10px;
 }
 .user-info {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
+}
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .username {
   font-weight: bold;
   font-size: 14px;
   color: #303133;
 }
+.book-tag {
+  line-height: 1;
+}
 .comment-time {
   font-size: 12px;
   color: #909399;
+  white-space: nowrap;
+  margin-left: 10px;
 }
 .comment-content {
   font-size: 14px;
   color: #606266;
   line-height: 1.6;
   margin-bottom: 12px;
+  padding-left: 42px; /* Align with text start */
 }
 .comment-footer {
   display: flex;
@@ -222,6 +301,7 @@ export default {
   align-items: center;
   font-size: 13px;
   color: #909399;
+  padding-left: 42px;
 }
 .stats {
   display: flex;
