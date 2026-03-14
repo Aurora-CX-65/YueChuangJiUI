@@ -14,7 +14,9 @@
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="title" label="标题" width="220" />
           <el-table-column prop="content" label="内容" />
-          <el-table-column prop="createdAt" label="时间" width="180" />
+          <el-table-column prop="createdAt" label="时间" width="180">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
           <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <el-space wrap>
@@ -23,6 +25,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <div class="pagination" v-if="total > 0">
+          <el-pagination
+            v-model:current-page="page"
+            :page-size="size"
+            :total="total"
+            layout="total, prev, pager, next, jumper"
+            background
+            @current-change="handlePageChange"
+          />
+        </div>
       </div>
     </el-card>
 
@@ -47,6 +59,7 @@
 </template>
 
 <script>
+import { AdminService } from '@/services/admin-service.js'
 import { NotificationService } from '@/services/notification-service.js'
 export default {
   name: 'AdminNotifications',
@@ -54,6 +67,9 @@ export default {
     return {
       loading: false,
       items: [],
+      page: 1,
+      size: 10,
+      total: 0,
       dialogVisible: false,
       saving: false,
       form: { title: '', content: '', targetUserIdsText: '' }
@@ -66,13 +82,22 @@ export default {
     async load() {
       this.loading = true
       try {
-        const res = await NotificationService.getNotifications(1, 20)
+        // 使用新的管理员接口获取所有通知
+        const res = await AdminService.getAdminNotifications(this.page, this.size)
         this.items = res?.records || []
+        this.total = res?.total || 0
       } catch (e) {
         console.error('加载通知失败:', e)
       } finally {
         this.loading = false
       }
+    },
+    handlePageChange(p) {
+      this.page = p
+      this.load()
+    },
+    formatDateTime(val) {
+      return AdminService.formatDateTime(val)
     },
     openCreate() {
       this.form = { title: '', content: '', targetUserIdsText: '' }
@@ -130,4 +155,9 @@ export default {
 }
 .title { font-weight: 600; }
 .loading { padding: 12px; }
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
 </style>

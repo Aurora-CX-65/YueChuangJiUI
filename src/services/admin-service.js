@@ -39,6 +39,10 @@ export class AdminService {
     return await httpClient.get('/api/admin/review/items', params)
   }
 
+  static async getReviewItemById(id) {
+    return await httpClient.get(`/api/admin/review/items/${id}`)
+  }
+
   static async getReviewHistory(page = 1, size = 5, type = '') {
     const params = { page, size }
     if (type) params.type = type
@@ -361,5 +365,12 @@ export class AdminService {
     const formData = new FormData()
     formData.append('file', file)
     return await httpClient.upload('/api/admin/banners/upload', formData)
+  }
+
+  static async getAdminNotifications(page = 1, size = 10, type = '', username = '') {
+    const params = { page, size }
+    if (type) params.type = type
+    if (username) params.username = username
+    return await httpClient.get('/api/admin/notifications', params)
   }
 }

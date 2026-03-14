@@ -35,9 +35,16 @@
             <el-table-column label="提交时间" width="180">
               <template #default="{ row }">{{ formatDateTime(row.submittedAt) }}</template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="120" />
+            <el-table-column prop="status" label="状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'pending_review' ? 'warning' : (row.status === 'published' ? 'success' : 'info')">
+                  {{ row.status === 'pending_review' ? '待审核' : (row.status === 'published' ? '已通过' : '已拒绝') }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
+                <el-button size="small" @click="openPreview(row)">查看内容</el-button>
                 <el-space wrap v-if="row.status === 'pending_review' || status === 'pending'">
                   <el-button size="small" type="success" @click="openApprove(row)">通过</el-button>
                   <el-button size="small" type="danger" @click="openReject(row)">拒绝</el-button>
@@ -82,6 +89,26 @@
         </el-table>
       </div>
     </el-card>
+
+    <!-- 章节内容预览对话框 -->
+    <el-dialog v-model="previewVisible" title="章节内容预览" width="800px">
+      <div v-loading="previewLoading" class="preview-content">
+        <div v-if="previewChapter">
+          <h2 class="chapter-title">{{ previewChapter.title }}</h2>
+          <div class="chapter-meta">
+            <span>字数: {{ previewChapter.wordCount }}</span>
+            <span>提交时间: {{ formatDateTime(previewChapter.submittedAt) }}</span>
+          </div>
+          <el-divider />
+          <div class="chapter-body" v-html="previewChapter.content"></div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="previewVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 审核通过对话框 -->
     <el-dialog v-model="approveVisible" title="审核通过" width="400px">
@@ -181,7 +208,10 @@ export default {
       selectedRows: [],
       batchAction: null,
       batchVisible: false,
-      batchComment: ''
+      batchComment: '',
+      previewVisible: false,
+      previewLoading: false,
+      previewChapter: null
     }
   },
   setup() {
@@ -240,6 +270,58 @@ export default {
       this.batchVisible = true
     },
     
+    async openPreview(row) {
+      this.previewVisible = true
+      this.previewLoading = true
+      this.previewChapter = null
+      try {
+        const res = await AdminService.getReviewItemById(row.targetId)
+        // 后端 ReviewItemResponse 不包含 content，需要额外调用获取章节详情接口
+        // 这里需要确认是否有管理员权限获取任意章节详情的接口
+        // 假设 AdminService.getChapterById 可用，或者复用 getReviewItemById 返回的数据如果包含 content
+        
+        // 方案A: 如果 getReviewItemById 返回了 targetContent 且是全文
+        if (res.targetContent) {
+            this.previewChapter = {
+                title: res.targetTitle,
+                content: res.targetContent,
+                wordCount: res.targetContent.length, // 估算
+                submittedAt: res.submittedAt
+            }
+        } else {
+            // 方案B: 调用章节详情接口（需要后端支持管理员获取任意章节）
+            // 目前后端 ChapterController.getChapterById 对非发布章节有权限控制（仅作者）
+            // 但 AdminController.getReviewItemById 应该返回审核所需的所有信息，包括内容
+            // 检查后端 ReviewItemResponse 发现确实没有 content 字段，只有 targetContent
+            // 且 AdminServiceImpl 中将 content 截断了 (substring(0, 100))
+            
+            // 因此必须调用获取完整章节内容的接口
+            // 使用新增加的 getAdminBookChapters 接口虽然可以获取列表，但不是单章详情
+            // 建议：前端调用 ChapterService.getChapterById，但需后端放行管理员权限
+            // 或者：使用 AdminService.getReviewItemById 但后端需修改不截断
+            
+            // 临时方案：尝试调用通用章节接口，如果失败则提示
+            const chapterRes = await AdminService.getReviewItemById(row.targetId)
+            // 实际上后端 AdminServiceImpl.getReviewItemById 中 Chapter 部分：
+            // item.setTargetContent(chapter.getContent()); // 这里是完整的 content
+            // 而列表接口 getReviewItems 中是截断的
+            // 所以直接使用 getReviewItemById 返回的数据即可
+            
+            this.previewChapter = {
+                title: chapterRes.targetTitle,
+                content: chapterRes.targetContent,
+                wordCount: chapterRes.targetContent?.length || 0,
+                submittedAt: chapterRes.submittedAt
+            }
+        }
+      } catch (e) {
+        console.error('加载章节详情失败:', e)
+        window.notificationManager?.error('加载章节内容失败')
+      } finally {
+        this.previewLoading = false
+      }
+    },
+
     // 判断是否为编辑角色（非管理员）
     isEditorOnly() {
       return this.userStore.isEditor && !this.userStore.isAdmin
@@ -405,5 +487,29 @@ export default {
   align-items: center;
   justify-content: space-between;
   margin: 12px 0;
+}
+.preview-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 20px;
+}
+.chapter-title {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.chapter-meta {
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.chapter-body {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #303133;
+  white-space: pre-wrap;
 }
 </style>

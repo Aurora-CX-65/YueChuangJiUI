@@ -33,6 +33,7 @@
           </el-table-column>
           <el-table-column label="操作" width="180" fixed="right" align="center">
             <template #default="{ row }">
+              <el-button size="small" @click="openPreview(row)" style="margin-right: 8px">预览</el-button>
               <el-button 
                 v-if="row.status === 'published'"
                 size="small" 
@@ -57,6 +58,26 @@
         </el-table>
       </div>
     </el-card>
+
+    <!-- 章节内容预览对话框 -->
+    <el-dialog v-model="previewVisible" title="章节内容预览" width="800px">
+      <div class="preview-content">
+        <div v-if="previewChapter">
+          <h2 class="chapter-title">{{ previewChapter.title }}</h2>
+          <div class="chapter-meta">
+            <span>字数: {{ previewChapter.wordCount }}</span>
+            <span>发布时间: {{ formatDateTime(previewChapter.publishedAt || previewChapter.createdAt) }}</span>
+          </div>
+          <el-divider />
+          <div class="chapter-body" v-html="previewChapter.content"></div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="previewVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 下架对话框 -->
     <el-dialog v-model="suspendVisible" title="下架章节" width="400px">
@@ -92,7 +113,11 @@ export default {
       suspendVisible: false,
       suspendReason: '',
       actionRow: null,
-      actionLoading: false
+      actionLoading: false,
+      
+      // Preview Dialog
+      previewVisible: false,
+      previewChapter: null
     }
   },
   created() {
@@ -136,6 +161,10 @@ export default {
         'suspended': '已下架'
       }
       return map[status] || status
+    },
+    openPreview(row) {
+      this.previewChapter = row
+      this.previewVisible = true
     },
     openSuspend(row) {
       this.actionRow = row
@@ -190,4 +219,28 @@ export default {
 .title { font-weight: 600; font-size: 16px; }
 .loading { padding: 20px; }
 .text-gray { color: #909399; font-size: 12px; }
+.preview-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 20px;
+}
+.chapter-title {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.chapter-meta {
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.chapter-body {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #303133;
+  white-space: pre-wrap;
+}
 </style>
