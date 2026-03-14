@@ -235,6 +235,26 @@ const routes = [
         meta: { title: '编辑中心 - 仪表盘', requiresRole: 'editor' }
       },
       {
+        path: 'chapter-management',
+        name: 'AdminChapterManagement',
+        component: () => import('../views/admin/AdminChapterManagement.vue'),
+        meta: {
+          title: '章节管理',
+          description: '管理平台所有章节（下架/恢复）',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'chapter-management/:bookId',
+        name: 'AdminBookChapters',
+        component: () => import('../views/admin/AdminBookChapters.vue'),
+        meta: {
+          title: '书籍章节列表',
+          description: '管理指定书籍的章节',
+          requiresRole: 'admin'
+        }
+      },
+      {
         path: 'book-reviews',
         name: 'EditorBookReviews',
         component: () => import('../views/admin/AdminBookReviews.vue'),
@@ -257,6 +277,18 @@ const routes = [
         name: 'EditorAuthorApplications',
         component: () => import('../views/admin/AdminAuthorApplications.vue'),
         meta: { title: '编辑中心 - 作者申请', requiresRole: 'editor' }
+      },
+      {
+        path: 'chapter-management',
+        name: 'EditorChapterManagement',
+        component: () => import('../views/admin/AdminChapterManagement.vue'),
+        meta: { title: '编辑中心 - 章节管理', requiresRole: 'editor' }
+      },
+      {
+        path: 'chapter-management/:bookId',
+        name: 'EditorBookChapters',
+        component: () => import('../views/admin/AdminBookChapters.vue'),
+        meta: { title: '编辑中心 - 书籍章节', requiresRole: 'editor' }
       }
     ]
   },
@@ -291,6 +323,26 @@ const routes = [
         meta: {
           title: '书籍管理',
           description: '管理平台书籍',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'chapter-management',
+        name: 'AdminChapterManagement',
+        component: () => import('../views/admin/AdminChapterManagement.vue'),
+        meta: {
+          title: '章节管理',
+          description: '管理平台所有章节（下架/恢复）',
+          requiresRole: 'admin'
+        }
+      },
+      {
+        path: 'chapter-management/:bookId',
+        name: 'AdminBookChapters',
+        component: () => import('../views/admin/AdminBookChapters.vue'),
+        meta: {
+          title: '书籍章节列表',
+          description: '管理指定书籍的章节',
           requiresRole: 'admin'
         }
       },

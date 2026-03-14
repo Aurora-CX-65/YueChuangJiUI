@@ -46,6 +46,16 @@
                 <el-form-item label="AI API Key">
                   <el-input v-model="form['ai.deepseek_api_key']" type="password" show-password placeholder="请输入密钥" />
                 </el-form-item>
+                
+                <el-divider content-position="left">审核设置</el-divider>
+                <el-form-item label="评论审核开关">
+                  <el-switch
+                    v-model="formBoolean['comment_audit_enabled']"
+                    active-text="开启"
+                    inactive-text="关闭"
+                  />
+                  <div class="form-tip">开启后，用户发表的评论默认为“待审核”状态，需管理员审核通过后才显示；关闭则直接通过。</div>
+                </el-form-item>
               </el-form>
             </template>
           </div>
@@ -211,6 +221,7 @@ export default {
       original: {},
       form: {},
       formNumber: {},
+      formBoolean: {}, // 新增：用于存储布尔类型的配置
       formFloat: {},
       Plus: markRaw(Plus), // Expose icon to template non-reactively
 
@@ -270,6 +281,7 @@ export default {
         this.original = flatSettings
         this.form = { ...this.original }
         this.formNumber = this.extractNumbers(this.form)
+        this.formBoolean = this.extractBooleans(this.form)
         this.formFloat = this.extractFloats(this.form)
       } catch (e) {
         console.error('加载系统设置失败:', e)
@@ -285,6 +297,18 @@ export default {
       numericKeys.forEach(k => {
         const v = map[k]
         out[k] = v != null ? Number(v) : 0
+      })
+      return out
+    },
+    extractBooleans(map) {
+      const out = {}
+      const boolKeys = [
+        'comment_audit_enabled'
+      ]
+      boolKeys.forEach(k => {
+        const v = map[k]
+        // 数据库存的是字符串 "true"/"false"，这里转为 boolean
+        out[k] = (String(v).toLowerCase() === 'true')
       })
       return out
     },
@@ -304,6 +328,10 @@ export default {
       const merged = { ...this.form }
       Object.keys(this.formNumber).forEach(k => {
         merged[k] = String(this.formNumber[k] ?? 0)
+      })
+      Object.keys(this.formBoolean).forEach(k => {
+        // boolean 转为字符串 "true"/"false" 发送给后端
+        merged[k] = String(this.formBoolean[k])
       })
       Object.keys(this.formFloat).forEach(k => {
         merged[k] = String(this.formFloat[k] ?? 0)
@@ -342,6 +370,7 @@ export default {
     resetSettings() {
       this.form = { ...this.original }
       this.formNumber = this.extractNumbers(this.form)
+      this.formBoolean = this.extractBooleans(this.form)
       this.formFloat = this.extractFloats(this.form)
       window.notificationManager.info('已重置为上次保存的配置')
     },

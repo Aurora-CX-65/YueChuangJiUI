@@ -20,6 +20,10 @@
               <el-icon><Reading /></el-icon>
               <span>书籍审核</span>
             </el-menu-item>
+            <el-menu-item index="/author/chapter-management">
+              <el-icon><Collection /></el-icon>
+              <span>章节管理</span>
+            </el-menu-item>
             <el-menu-item index="/author/chapter-reviews">
               <el-icon><DocumentChecked /></el-icon>
               <span>章节审核</span>
@@ -66,14 +70,14 @@
 <script>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { DataAnalysis, Notebook, ChatLineSquare, Setting, Reading, DocumentChecked, ChatDotSquare, User } from '@element-plus/icons-vue'
+import { DataAnalysis, Notebook, ChatLineSquare, Setting, Reading, DocumentChecked, ChatDotSquare, User, Collection } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user-store.js'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
 
 export default {
   name: 'AuthorLayout',
-  components: { DataAnalysis, Notebook, ChatLineSquare, Setting, Reading, DocumentChecked, ChatDotSquare, User, Navbar, Footer },
+  components: { DataAnalysis, Notebook, ChatLineSquare, Setting, Reading, DocumentChecked, ChatDotSquare, User, Navbar, Footer, Collection },
   setup() {
     const userStore = useUserStore()
     const router = useRouter()

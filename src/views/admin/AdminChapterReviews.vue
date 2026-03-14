@@ -22,7 +22,15 @@
             <el-table-column type="selection" width="55" />
             <el-table-column prop="targetId" label="章节ID" width="100" />
             <el-table-column prop="targetTitle" label="章节标题" min-width="240" />
-            <el-table-column prop="relatedInfo" label="所属书籍" min-width="200" />
+            <el-table-column label="所属书籍" min-width="200">
+              <template #default="{ row }">
+                <div v-if="row.bookTitle">
+                  <span style="font-weight: 500">{{ row.bookTitle }}</span>
+                  <el-tag size="small" type="info" style="margin-left: 8px">ID: {{ row.bookId }}</el-tag>
+                </div>
+                <span v-else class="text-gray">未知书籍</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="submitterUsername" label="提交者" width="140" />
             <el-table-column label="提交时间" width="180">
               <template #default="{ row }">{{ formatDateTime(row.submittedAt) }}</template>
@@ -33,6 +41,9 @@
                 <el-space wrap v-if="row.status === 'pending_review' || status === 'pending'">
                   <el-button size="small" type="success" @click="openApprove(row)">通过</el-button>
                   <el-button size="small" type="danger" @click="openReject(row)">拒绝</el-button>
+                </el-space>
+                <el-space wrap v-else-if="row.status === 'published' || status === 'approved'">
+                  <el-button size="small" type="warning" @click="openSuspend(row)">下架</el-button>
                 </el-space>
                 <span v-else>已处理</span>
               </template>
@@ -101,6 +112,21 @@
         </span>
       </template>
     </el-dialog>
+    <!-- 下架对话框 -->
+    <el-dialog v-model="suspendVisible" title="下架章节" width="400px">
+      <el-form>
+        <el-form-item label="下架原因" required>
+          <el-input v-model="suspendReason" type="textarea" :rows="3" placeholder="请输入下架原因（必填），将通知作者" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="suspendVisible = false">取消</el-button>
+          <el-button type="danger" :loading="actionLoading" @click="confirmSuspend">确定下架</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="batchVisible" :title="batchAction === 'approved' ? '批量通过' : '批量拒绝'" width="400px">
       <el-form>
         <el-form-item :label="batchAction === 'approved' ? '审核意见' : '拒绝原因'" :required="batchAction === 'rejected'">
@@ -146,8 +172,10 @@ export default {
       historyLoading: false,
       approveVisible: false,
       rejectVisible: false,
+      suspendVisible: false,
       approveComment: '',
       rejectComment: '',
+      suspendReason: '',
       actionRow: null,
       actionLoading: false,
       selectedRows: [],
@@ -193,6 +221,11 @@ export default {
       this.actionRow = row
       this.rejectComment = ''
       this.rejectVisible = true
+    },
+    openSuspend(row) {
+      this.actionRow = row
+      this.suspendReason = ''
+      this.suspendVisible = true
     },
     openBatchApprove() {
       if (!this.selectedRows.length) return
@@ -289,6 +322,28 @@ export default {
       } catch (e) {
         console.error('审核拒绝失败:', e)
         window.notificationManager.error(e.message || '审核拒绝失败')
+      } finally {
+        this.actionLoading = false
+      }
+    },
+
+    async confirmSuspend() {
+      if (!this.actionRow) return
+      const reason = this.suspendReason.trim()
+      if (!reason) {
+        window.notificationManager.error('请填写下架原因')
+        return
+      }
+      this.actionLoading = true
+      try {
+        await AdminService.suspendChapter(this.actionRow.targetId, reason)
+        this.suspendVisible = false
+        window.notificationManager.success('下架成功，已通知作者')
+        this.loadPending()
+        this.loadHistory()
+      } catch (e) {
+        console.error('下架失败:', e)
+        window.notificationManager.error(e.message || '下架失败')
       } finally {
         this.actionLoading = false
       }

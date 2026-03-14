@@ -287,6 +287,10 @@ export class AdminService {
     return await httpClient.put('/api/admin/books/batch/status', { bookIds, status, reason })
   }
 
+  static async suspendChapter(chapterId, reason) {
+    return await httpClient.put(`/api/admin/chapters/${chapterId}/suspend`, { reason })
+  }
+
   static async getAdminComments(page = 1, size = 10, keyword = '', status = '', bookId = '', userId = '') {
     const params = { page, size }
     if (keyword) params.keyword = keyword
@@ -330,6 +334,10 @@ export class AdminService {
 
   static async searchBooks(keyword) {
     return await httpClient.get('/api/admin/books/search', { keyword })
+  }
+
+  static async getAdminBookChapters(bookId) {
+    return await httpClient.get(`/api/admin/books/${bookId}/chapters`)
   }
 
   // === Author Application Management ===

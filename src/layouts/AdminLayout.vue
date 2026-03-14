@@ -32,6 +32,7 @@
               <span>书籍中心</span>
             </template>
             <el-menu-item index="/admin/books">书籍管理</el-menu-item>
+            <el-menu-item index="/admin/chapter-management">章节管理</el-menu-item>
             <el-menu-item index="/admin/book-reviews">书籍审核</el-menu-item>
             <el-menu-item index="/admin/chapter-reviews">章节审核</el-menu-item>
           </el-sub-menu>

@@ -96,8 +96,7 @@
         </el-row>
 
         <el-form-item class="form-actions">
-          <el-button type="primary" @click="submitForm('draft')">保存草稿</el-button>
-          <el-button type="success" @click="submitForm('pending_review')">立即发布</el-button>
+          <el-button type="primary" @click="handleCreateBook">完成创建</el-button>
           <el-button @click="$router.back()">取消</el-button>
         </el-form-item>
       </el-form>
@@ -178,14 +177,15 @@ export default {
       coverUrl.value = URL.createObjectURL(file.raw)
     }
 
-    const submitForm = async (status) => {
+    const handleCreateBook = async () => {
       if (!formRef.value) return
       
       await formRef.value.validate(async (valid) => {
         if (valid) {
           submitting.value = true
           try {
-            form.status = status
+            // 默认为草稿状态
+            form.status = 'draft'
             // 1. 创建书籍
             const newBook = await bookStore.createBook(form)
             
@@ -194,10 +194,15 @@ export default {
                await bookStore.uploadBookCover(newBook.id, coverFile.value)
             }
             
-            ElMessage.success(status === 'draft' ? '草稿保存成功' : '发布申请已提交')
-            router.push('/author/books')
+            ElMessage.success('书籍创建成功，请开始创作章节')
+            // 跳转到章节管理页面
+            router.push({
+              name: 'AuthorChapterManager',
+              params: { id: newBook.id }
+            })
           } catch (error) {
             console.error(error)
+            ElMessage.error('创建失败，请重试')
           } finally {
             submitting.value = false
           }
@@ -214,7 +219,7 @@ export default {
       submitting,
       handleCoverChange,
       coverUrl,
-      submitForm
+      handleCreateBook
     }
   }
 }
