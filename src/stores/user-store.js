@@ -319,6 +319,50 @@ export const useUserStore = defineStore('user', {
     },
 
     /**
+     * 刷新认证信息
+     * 从数据库获取最新用户信息并更新JWT令牌（用于角色变更后实时更新）
+     */
+    async refreshAuthInfo() {
+      try {
+        console.log('[UserStore] 开始刷新认证信息...')
+        const response = await AuthService.refreshAuthInfo()
+        
+        console.log('[UserStore] 收到响应:', response)
+        
+        if (response && response.accessToken) {
+          // 更新令牌
+          TokenManager.setToken(response.accessToken)
+          if (response.refreshToken) {
+            TokenManager.setRefreshToken(response.refreshToken)
+          }
+          
+          // 更新用户信息
+          this.currentUser = response.userInfo
+          this.isAuthenticated = true
+          
+          console.log('[UserStore] 用户信息已更新，最新角色:', response.userInfo?.role)
+          
+          // 重新初始化权限检查器
+          this.permissionChecker = new AdminPermissionChecker(response.userInfo)
+          
+          // 获取用户统计信息
+          if (response.userInfo?.id) {
+            await this.fetchUserStats(response.userInfo.id)
+          }
+          
+          return response
+        }
+        
+        console.error('[UserStore] 响应格式错误:', response)
+        throw new Error('刷新认证信息响应格式错误')
+      } catch (error) {
+        console.error('[UserStore] 刷新认证信息失败:', error)
+        this.handleError(error, '刷新认证信息')
+        throw error
+      }
+    },
+
+    /**
      * 更新用户信息
      * @param {Object} updateData - 更新数据
      */

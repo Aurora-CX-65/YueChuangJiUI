@@ -240,7 +240,7 @@ export default {
       try {
         // 并行获取分类数据和热门书籍数据
         await Promise.all([
-          categoryStore.fetchCategories(),
+          categoryStore.fetchCategories(true), // 强制刷新，确保获取最新分类数据
           fetchHotBooks(),
           fetchBanners()
         ])

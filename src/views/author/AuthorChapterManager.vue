@@ -1,21 +1,21 @@
 <template>
   <div class="author-chapter-manager">
-    <el-card shadow="never">
-      <template #header>
-        <div class="header">
-          <div class="left">
-            <span>章节管理</span>
-            <el-tag v-if="book" type="info" class="ml-2">{{ book.title }}</el-tag>
-          </div>
-          <div class="actions">
-            <el-button @click="$router.push('/author/books')">返回书籍列表</el-button>
-            <el-button type="primary" @click="createChapter">
-              <el-icon><Plus /></el-icon> 新建章节
-            </el-button>
-          </div>
+    <div class="sticky-header">
+      <div class="header-content">
+        <div class="left">
+          <span>章节管理</span>
+          <el-tag v-if="book" type="info" class="ml-2">{{ book.title }}</el-tag>
         </div>
-      </template>
+        <div class="actions">
+          <el-button @click="$router.push('/author/books')">返回书籍列表</el-button>
+          <el-button type="primary" @click="createChapter">
+            <el-icon><Plus /></el-icon> 新建章节
+          </el-button>
+        </div>
+      </div>
+    </div>
 
+    <div class="content-area">
       <div v-if="loading" class="loading-container">
         <el-skeleton :rows="5" animated />
       </div>
@@ -24,57 +24,56 @@
         <el-button type="primary" @click="createChapter">新建第一章</el-button>
       </el-empty>
 
-      <div v-else class="chapter-list">
-        <el-table :data="chapters" style="width: 100%" row-key="id">
-          <el-table-column prop="sortOrder" label="序号" width="80" align="center" />
-          <el-table-column prop="title" label="章节标题" min-width="200" />
-          <el-table-column prop="wordCount" label="字数" width="100" align="center" />
-          <el-table-column prop="status" label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="updatedAt" label="更新时间" width="180" align="center">
-            <template #default="{ row }">
-              {{ formatDateTime(row.updatedAt) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="250" align="center" fixed="right">
-            <template #default="{ row }">
-              <el-button link type="primary" @click="editChapter(row)">编辑</el-button>
-              
-              <el-button 
-                v-if="row.status === 'draft'" 
-                link 
-                type="success" 
-                @click="submitChapter(row)"
-              >
-                提交审核
-              </el-button>
-              <el-tag v-else-if="row.status === 'pending_review'" type="warning" size="small" class="mx-2">审核中</el-tag>
-              <el-button 
-                v-else-if="row.status === 'published'" 
-                link 
-                type="warning" 
-                disabled
-                title="已发布章节不可撤回"
-              >
-                已发布
-              </el-button>
-              
-              <el-popconfirm 
-                title="确定要删除这一章吗？删除后无法恢复。" 
-                @confirm="deleteChapter(row)"
-              >
-                <template #reference>
-                  <el-button link type="danger">删除</el-button>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
+      <el-table v-else :data="chapters" style="width: 100%" row-key="id" max-height="calc(100vh - 180px)">
+        <el-table-column prop="sortOrder" label="序号" width="80" align="center" />
+        <el-table-column prop="title" label="章节标题" min-width="200" />
+        <el-table-column prop="wordCount" label="字数" width="100" align="center" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="updatedAt" label="更新时间" width="180" align="center">
+          <template #default="{ row }">
+            {{ formatDateTime(row.updatedAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="250" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="editChapter(row)">编辑</el-button>
+            
+            <el-button 
+              v-if="row.status === 'draft' || row.status === 'banned'" 
+              link 
+              type="success" 
+              @click="submitChapter(row)"
+            >
+              提交审核
+            </el-button>
+            <el-tag v-else-if="row.status === 'pending_review'" type="warning" size="small" class="mx-2">审核中</el-tag>
+            <el-button 
+              v-else-if="row.status === 'published'" 
+              link 
+              type="warning" 
+              disabled
+              title="已发布章节不可撤回"
+            >
+              已发布
+            </el-button>
+            <el-tag v-else-if="row.status === 'banned'" type="danger" size="small" class="mx-2">已封禁</el-tag>
+            
+            <el-popconfirm 
+              title="确定要删除这一章吗？删除后无法恢复。" 
+              @confirm="deleteChapter(row)"
+            >
+              <template #reference>
+                <el-button link type="danger">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
   </div>
 </template>
 
@@ -171,6 +170,7 @@ export default {
         'draft': '草稿',
         'pending_review': '审核中',
         'published': '已发布',
+        'banned': '已封禁',
         'archived': '已归档'
       }
       return map[status] || status
@@ -181,6 +181,7 @@ export default {
         'draft': 'info',
         'pending_review': 'warning',
         'published': 'success',
+        'banned': 'danger',
         'archived': 'warning'
       }
       return map[status] || ''
@@ -203,24 +204,46 @@ export default {
 </script>
 
 <style scoped>
-.header {
+.author-chapter-manager {
+  min-height: 100vh;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  border-bottom: 1px solid #ebeef5;
+  padding: 12px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
 }
+
 .left {
   display: flex;
   align-items: center;
   font-size: 16px;
   font-weight: bold;
 }
+
 .ml-2 {
   margin-left: 12px;
 }
-.loading-container {
+
+.content-area {
+  max-width: 1400px;
+  margin: 0 auto;
   padding: 20px;
 }
-.chapter-list {
-  margin-top: 10px;
+
+.loading-container {
+  padding: 20px;
 }
 </style>

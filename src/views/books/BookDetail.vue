@@ -454,8 +454,16 @@ const loadBookDetail = async () => {
 const loadChapters = async () => {
   try {
     chaptersLoading.value = true
-    const chaptersData = await ChapterService.getChaptersByBookId(bookId.value, 1, 100)
+    // 只获取已发布的章节
+    const chaptersData = await ChapterService.getPublishedChaptersByBookId(bookId.value, 1, 100)
     chapters.value = chaptersData?.records || []
+    
+    // 更新书籍的已发布章节统计
+    if (book.value) {
+      const stats = await ChapterService.getPublishedChapterStats(bookId.value)
+      book.value.chapterCount = stats?.chapterCount || 0
+      book.value.wordCount = stats?.totalWordCount || 0
+    }
   } catch (error) {
     console.error('加载章节列表失败:', error)
     chapters.value = []

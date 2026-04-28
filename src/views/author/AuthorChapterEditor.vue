@@ -139,7 +139,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChapterStore } from '@/stores/chapter-store'
 import { useBookStore } from '@/stores/book-store'
@@ -149,6 +149,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import SelfHostedTinyEditor from '@/components/editor/SelfHostedTinyEditor.vue'
 import { formatDate } from '@/utils/formatters'
 import { ChapterService } from '@/services/chapter-service'
+import { EditorSettings } from '@/utils/editor-settings'
 
 export default {
   name: 'AuthorChapterEditor',
@@ -160,8 +161,8 @@ export default {
     const bookStore = useBookStore()
 
     const bookId = parseInt(route.params.id)
-    const chapterId = route.params.chapterId ? parseInt(route.params.chapterId) : null
-    const isEdit = !!chapterId
+    const chapterId = ref(route.params.chapterId ? parseInt(route.params.chapterId) : null)
+    const isEdit = ref(!!route.params.chapterId)
 
     const formRef = ref(null)
     const loading = ref(true)
@@ -202,10 +203,8 @@ export default {
                 bullist numlist outdent indent | removeformat | help | fullscreen',
       language: 'zh_CN',
       language_url: '/tinymce/langs/zh_CN.js',
-      skin_url: '/tinymce/skins/ui/oxide',
-      content_css: '/tinymce/skins/content/default/content.css',
       promotion: false, // 禁用升级提示
-      branding: false   // 禁用 branding
+      branding: false,  // 禁用 branding
     }
 
     const book = computed(() => {
@@ -222,6 +221,9 @@ export default {
         return text.length
     })
 
+    let autoSaveTimer = null
+    const settings = EditorSettings.get()
+    
     const init = async () => {
       loading.value = true
       try {
@@ -229,8 +231,8 @@ export default {
            await bookStore.fetchBookById(bookId)
         }
 
-        if (isEdit) {
-          const chapter = await chapterStore.fetchChapterById(chapterId)
+        if (isEdit.value) {
+          const chapter = await chapterStore.fetchChapterById(chapterId.value)
           if (chapter) {
             form.title = chapter.title
             form.orderNum = chapter.sortOrder
@@ -240,8 +242,8 @@ export default {
           }
         } else {
           // 创建模式，自动计算下一个序号
-          // 先获取列表以确定最大序号
-          await chapterStore.fetchChaptersByBook(bookId)
+          // 先获取列表以确定最大序号（获取全部章节，确保序号正确）
+          await chapterStore.fetchChaptersByBook(bookId, 1, 1000)
           const chapters = chapterStore.getChaptersByBookId(bookId).items
           if (chapters.length > 0) {
             const maxOrder = Math.max(...chapters.map(c => c.sortOrder))
@@ -256,11 +258,56 @@ export default {
       }
     }
 
+    // 自动保存
+    const startAutoSave = () => {
+      if (autoSaveTimer) {
+        clearInterval(autoSaveTimer)
+      }
+      
+      if (settings.autoSave) {
+        autoSaveTimer = setInterval(async () => {
+          if (form.content && form.content.trim()) {
+            try {
+              const data = {
+                bookId,
+                title: form.title || '未命名章节',
+                content: form.content,
+                sortOrder: form.orderNum,
+                status: 'draft'
+              }
+              
+              if (isEdit.value) {
+                await chapterStore.updateChapter(chapterId.value, data)
+              } else {
+                // 对于新章节，先创建，后续编辑时更新
+                const newChapter = await chapterStore.createChapter(data)
+                if (newChapter && newChapter.id) {
+                  chapterId.value = newChapter.id
+                  isEdit.value = true
+                  await loadVersions()
+                }
+              }
+              console.log('自动保存成功')
+            } catch (error) {
+              console.error('自动保存失败', error)
+            }
+          }
+        }, 2 * 60 * 1000) // 每2分钟保存一次
+      }
+    }
+
+    const stopAutoSave = () => {
+      if (autoSaveTimer) {
+        clearInterval(autoSaveTimer)
+        autoSaveTimer = null
+      }
+    }
+
     const loadVersions = async () => {
-      if (!isEdit) return
+      if (!isEdit.value) return
       versionsLoading.value = true
       try {
-        const res = await ChapterService.getChapterVersions(chapterId)
+        const res = await ChapterService.getChapterVersions(chapterId.value)
         versions.value = res || []
       } catch (e) {
         console.error(e)
@@ -277,10 +324,10 @@ export default {
           type: 'warning'
         })
         
-        await ChapterService.restoreChapterVersion(chapterId, version.id)
+        await ChapterService.restoreChapterVersion(chapterId.value, version.id)
         ElMessage.success('版本恢复成功')
         // 重新加载章节内容
-        const chapter = await chapterStore.fetchChapterById(chapterId)
+        const chapter = await chapterStore.fetchChapterById(chapterId.value)
         if (chapter) {
           form.title = chapter.title
           form.content = chapter.content
@@ -295,6 +342,11 @@ export default {
 
     onMounted(() => {
       init()
+      startAutoSave()
+    })
+
+    onBeforeUnmount(() => {
+      stopAutoSave()
     })
 
     const saveChapter = async (status) => {
@@ -314,16 +366,16 @@ export default {
               versionNote: '用户手动保存'
             }
 
-            if (isEdit) {
+            if (isEdit.value) {
               if (status === 'pending_review') {
                   // 如果是提交审核，调用 submit 接口（因为 update 接口不再支持变更状态为 published/pending）
                   // 先保存内容
-                  await chapterStore.updateChapter(chapterId, { ...data, status: 'draft' })
+                  await chapterStore.updateChapter(chapterId.value, { ...data, status: 'draft' })
                   // 再提交审核
-                  await chapterStore.submitChapterForReview(chapterId)
+                  await chapterStore.submitChapterForReview(chapterId.value)
                   ElMessage.success('章节已提交审核')
               } else {
-                  await chapterStore.updateChapter(chapterId, data)
+                  await chapterStore.updateChapter(chapterId.value, data)
                   ElMessage.success('章节更新成功')
               }
               loadVersions() // 刷新版本列表
@@ -339,7 +391,7 @@ export default {
                   ElMessage.success('章节创建成功')
               }
             }
-            if (!isEdit) {
+            if (!isEdit.value) {
                 router.push(`/author/books/${bookId}/chapters`)
             }
           } catch (error) {

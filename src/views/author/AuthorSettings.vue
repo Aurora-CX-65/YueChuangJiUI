@@ -56,47 +56,33 @@
 <script>
 import { reactive, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { EditorSettings } from '@/utils/editor-settings'
 
 export default {
   name: 'AuthorSettings',
   setup() {
     const saving = ref(false)
-    const defaultSettings = {
-      fontSize: 16,
-      lineHeight: 1.8,
-      theme: 'light',
-      autoSave: true,
-      indent: true,
-      smartPunctuation: true
-    }
 
-    const settings = reactive({ ...defaultSettings })
+    const settings = reactive({ ...EditorSettings.get() })
 
     onMounted(() => {
       // 从 LocalStorage 加载设置
-      const saved = localStorage.getItem('author_creative_settings')
-      if (saved) {
-        try {
-          Object.assign(settings, JSON.parse(saved))
-        } catch (e) {
-          console.error('加载设置失败', e)
-        }
-      }
+      Object.assign(settings, EditorSettings.get())
     })
 
     const saveSettings = () => {
       saving.value = true
       setTimeout(() => {
-        localStorage.setItem('author_creative_settings', JSON.stringify(settings))
+        EditorSettings.set(settings)
         ElMessage.success('设置已保存')
         saving.value = false
-        // 这里可以触发一个全局事件或更新 Store，让编辑器即时生效
       }, 500)
     }
 
     const resetSettings = () => {
-      Object.assign(settings, defaultSettings)
-      saveSettings()
+      const defaults = EditorSettings.reset()
+      Object.assign(settings, defaults)
+      ElMessage.success('已恢复默认设置')
     }
 
     return {

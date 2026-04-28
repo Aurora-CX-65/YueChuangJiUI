@@ -295,6 +295,10 @@ export class AdminService {
     return await httpClient.put(`/api/admin/chapters/${chapterId}/suspend`, { reason })
   }
 
+  static async restoreChapter(chapterId, reason) {
+    return await httpClient.put(`/api/admin/chapters/${chapterId}/restore`, { reason })
+  }
+
   static async getAdminComments(page = 1, size = 10, keyword = '', status = '', bookId = '', userId = '') {
     const params = { page, size }
     if (keyword) params.keyword = keyword

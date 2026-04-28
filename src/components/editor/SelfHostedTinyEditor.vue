@@ -5,6 +5,8 @@
 </template>
 
 <script>
+import { EditorSettings } from '@/utils/editor-settings'
+
 let uid = 0
 
 export default {
@@ -24,7 +26,8 @@ export default {
     return {
       editorId: `self-hosted-tiny-${++uid}`,
       tinymceReady: false,
-      editorInstance: null
+      editorInstance: null,
+      settings: EditorSettings.get()
     }
   },
   mounted() {
@@ -76,6 +79,27 @@ export default {
         document.head.appendChild(s)
       })
     },
+    getSkinUrl() {
+      switch (this.settings.theme) {
+        case 'dark':
+          return '/tinymce/skins/ui/oxide-dark'
+        case 'eye-care':
+        case 'light':
+        default:
+          return '/tinymce/skins/ui/oxide'
+      }
+    },
+    getContentCss() {
+      switch (this.settings.theme) {
+        case 'dark':
+          return '/tinymce/skins/content/dark/content.css'
+        case 'eye-care':
+          return '/tinymce/skins/content/eye-care/content.css'
+        case 'light':
+        default:
+          return '/tinymce/skins/content/default/content.css'
+      }
+    },
     initEditor() {
       const baseConfig = {
         selector: `#${this.editorId}`,
@@ -89,10 +113,19 @@ export default {
                  'bullist numlist outdent indent | removeformat | help | fullscreen',
         branding: false,
         // 自托管皮肤与内容样式路径
-        skin_url: this.init.skin_url || '/tinymce/skins/ui/oxide',
-        content_css: this.init.content_css || '/tinymce/skins/content/default/content.css',
+        skin_url: this.init.skin_url || this.getSkinUrl(),
+        content_css: this.init.content_css || this.getContentCss(),
         language: this.init.language || 'zh_CN',
         language_url: this.init.language_url || '/tinymce/langs/zh_CN.js',
+        content_style: `
+          body { 
+            font-size: ${this.settings.fontSize}px !important; 
+            line-height: ${this.settings.lineHeight} !important; 
+          }
+          p { 
+            line-height: ${this.settings.lineHeight} !important; 
+          }
+        `,
         setup: (editor) => {
           this.editorInstance = editor
           editor.on('init', () => {

@@ -1,10 +1,10 @@
 <template>
   <footer class="footer">
-    <p>&copy; 2024 阅创集. All rights reserved.</p>
+    <p>&copy; 2026 阅创集. All rights reserved.</p>
     <nav>
-      <a href="/about">关于我们</a>
-      <a href="/contact">联系我们</a>
-      <a href="/privacy">隐私政策</a>
+      <a href="javascript:void(0)" @click.prevent>关于我们</a>
+      <a href="javascript:void(0)" @click.prevent>联系我们</a>
+      <a href="javascript:void(0)" @click.prevent>隐私政策</a>
     </nav>
   </footer>
 </template>
@@ -31,6 +31,7 @@ export default {
   margin: 0 10px;
   color: var(--text-color);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .footer nav a:hover {

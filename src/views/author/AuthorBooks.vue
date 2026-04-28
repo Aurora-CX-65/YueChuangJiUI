@@ -30,7 +30,7 @@
             <div class="book-meta">
               <span>{{ book.categoryName }}</span>
               <span class="divider">|</span>
-              <span>{{ formatWordCount(book.wordCount) }}字</span>
+              <span>{{ formatWordCount(book.totalWordCount) }}字</span>
               <span class="divider">|</span>
               <span>{{ formatDateTime(book.updateTime) }} 更新</span>
             </div>
@@ -154,6 +154,12 @@ export default {
       } else if (cmd === 'timelines') {
         this.$router.push(`/author/books/${book.id}/timelines`)
       } else if (cmd === 'submit_review') {
+        // 前端检查：书籍必须有章节才能提交审核
+        if (!book.chapterCount || book.chapterCount === 0) {
+          ElMessage.warning('书籍必须包含至少一个章节才能提交审核')
+          return
+        }
+        
         try {
           await ElMessageBox.confirm('确定要提交审核吗？审核通过后将变为连载/已发布状态。', '提示', {
             confirmButtonText: '确定',

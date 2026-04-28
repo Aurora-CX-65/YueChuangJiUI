@@ -137,7 +137,7 @@ export default {
         'completed': 'warning',
         'draft': 'info',
         'pending_review': 'primary',
-        'suspended': 'danger'
+        'banned': 'danger'
       }
       return map[status] || 'info'
     },
@@ -148,7 +148,7 @@ export default {
         'completed': '已完结',
         'draft': '草稿',
         'pending_review': '待审核',
-        'suspended': '已下架'
+        'banned': '已封禁'
       }
       return map[status] || status
     }

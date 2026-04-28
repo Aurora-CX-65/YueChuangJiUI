@@ -43,7 +43,7 @@
                 下架
               </el-button>
               <el-button 
-                v-if="row.status === 'suspended'"
+                v-if="row.status === 'banned'"
                 size="small" 
                 type="success" 
                 @click="openRestore(row)"
@@ -93,6 +93,21 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 恢复对话框 -->
+    <el-dialog v-model="restoreVisible" title="恢复章节" width="400px">
+      <el-form>
+        <el-form-item label="恢复原因" required>
+          <el-input v-model="restoreReason" type="textarea" :rows="3" placeholder="请输入恢复原因（必填），将通知作者" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="restoreVisible = false">取消</el-button>
+          <el-button type="success" :loading="actionLoading" @click="confirmRestore">确定恢复</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -112,6 +127,11 @@ export default {
       // Suspend Dialog
       suspendVisible: false,
       suspendReason: '',
+      
+      // Restore Dialog
+      restoreVisible: false,
+      restoreReason: '',
+      
       actionRow: null,
       actionLoading: false,
       
@@ -149,7 +169,7 @@ export default {
         'published': 'success',
         'draft': 'info',
         'pending_review': 'primary',
-        'suspended': 'danger'
+        'banned': 'danger'
       }
       return map[status] || 'info'
     },
@@ -158,7 +178,7 @@ export default {
         'published': '已发布',
         'draft': '草稿',
         'pending_review': '待审核',
-        'suspended': '已下架'
+        'banned': '已封禁'
       }
       return map[status] || status
     },
@@ -192,14 +212,31 @@ export default {
         this.actionLoading = false
       }
     },
-    // TODO: 恢复功能后端暂未实现，目前前端预留入口
     openRestore(row) {
-        // 由于后端暂时没有专门的 restoreChapter 接口，
-        // 这里可以暂时提示不支持，或者调用更新状态的接口如果允许的话。
-        // 根据之前的实现，suspendChapter 是专门的接口。
-        // 如果要恢复，可能需要 updateChapterStatus 接口，但目前 AdminService 只有 updateBookStatus。
-        // 建议后续补充 restoreChapter 接口。
-        window.notificationManager?.info('恢复功能开发中')
+      this.actionRow = row
+      this.restoreReason = ''
+      this.restoreVisible = true
+    },
+    async confirmRestore() {
+      if (!this.actionRow) return
+      const reason = this.restoreReason.trim()
+      if (!reason) {
+        window.notificationManager?.error('请填写恢复原因')
+        return
+      }
+      
+      this.actionLoading = true
+      try {
+        await AdminService.restoreChapter(this.actionRow.id, reason)
+        this.restoreVisible = false
+        window.notificationManager?.success('恢复成功')
+        this.loadChapters()
+      } catch (e) {
+        console.error('恢复失败:', e)
+        window.notificationManager?.error('恢复失败')
+      } finally {
+        this.actionLoading = false
+      }
     }
   }
 }

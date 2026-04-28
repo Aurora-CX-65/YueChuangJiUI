@@ -127,6 +127,22 @@ export async function beforeEachGuard(to, from, next) {
     }
   }
 
+  // 针对需要作者权限的页面，如果当前用户角色不是作者，尝试刷新认证信息
+  const isAuthorRoute = (meta.requiresRole === 'author' || 
+                        (meta.requiresAnyRole && meta.requiresAnyRole.includes('author')))
+  
+  if (isAuthorRoute && userRole && userRole !== 'author' && userRole !== 'editor' && userRole !== 'admin') {
+    try {
+      // 尝试从服务器刷新认证信息
+      await userStore.refreshAuthInfo()
+      userRole = getCurrentUserRole()
+      console.log('[Router] 刷新认证信息成功，最新角色:', userRole)
+    } catch (e) {
+      console.warn('[Router] 刷新认证信息失败:', e)
+      // 刷新失败不影响原有逻辑，继续使用当前角色
+    }
+  }
+
   // 检查权限
   if (!hasPermission(meta, userRole)) {
     const redirectPath = getRedirectPath(to, userRole)

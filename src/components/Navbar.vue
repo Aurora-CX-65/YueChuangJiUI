@@ -316,7 +316,7 @@ export default {
       const s = String(d.getSeconds()).padStart(2, '0')
       return `${y}-${M}-${D} ${h}:${m}:${s}`
     },
-    handleAuthorCenter() {
+    async handleAuthorCenter() {
       if (!this.userStore.isLoggedIn) {
         ElMessage.warning('请先登录')
         this.$router.push('/auth/login')
@@ -326,20 +326,52 @@ export default {
       // 如果是作者或编辑，跳转到作者中心（路由守卫会自动分流）
       if (this.userStore.isAuthor || this.userStore.isEditor || this.userStore.isAdmin) {
         this.$router.push('/author')
-      } else {
-        // 如果是读者，提示申请成为作者
-        ElMessageBox.confirm(
-          '您还不是作者，是否申请成为作者？',
-          '成为作者',
-          {
-            confirmButtonText: '去申请',
-            cancelButtonText: '取消',
-            type: 'info'
-          }
-        ).then(() => {
-          this.$router.push('/author/apply')
-        }).catch(() => {})
+        return
       }
+
+      // 当前角色不是作者，尝试刷新认证信息（处理审核通过后角色变更的情况）
+      try {
+        const loading = ElMessage({
+          message: '正在刷新权限信息...',
+          type: 'info',
+          duration: 0
+        })
+        
+        const refreshResult = await this.userStore.refreshAuthInfo()
+        loading.close()
+        
+        console.log('[Navbar] 刷新认证信息成功，响应数据:', refreshResult)
+        
+        // 直接使用刷新返回的最新角色信息，避免 Vue 响应式更新延迟
+        if (refreshResult && refreshResult.userInfo) {
+          const newRole = refreshResult.userInfo.role
+          console.log('[Navbar] 最新角色:', newRole)
+          
+          if (newRole === 'author' || newRole === 'editor' || newRole === 'admin') {
+            ElMessage.success('权限已更新，欢迎使用创作中心！')
+            // 等待 Vue 更新完成后再导航
+            await this.$nextTick()
+            this.$router.push('/author')
+            return
+          }
+        }
+      } catch (e) {
+        console.warn('[Navbar] 刷新认证信息失败:', e)
+        // 刷新失败不影响后续逻辑
+      }
+      
+      // 如果刷新后仍不是作者，提示申请成为作者
+      ElMessageBox.confirm(
+        '您还不是作者，是否申请成为作者？',
+        '成为作者',
+        {
+          confirmButtonText: '去申请',
+          cancelButtonText: '取消',
+          type: 'info'
+        }
+      ).then(() => {
+        this.$router.push('/author/apply')
+      }).catch(() => {})
     }
   }
 }

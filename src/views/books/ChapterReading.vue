@@ -367,7 +367,7 @@ const fetchChaptersList = async () => {
       bookTitle.value = res?.title || '';
     }).catch(() => {});
 
-    const data = await ChapterService.getChaptersByBookId(bookId.value, 1, 1000); 
+    const data = await ChapterService.getPublishedChaptersByBookId(bookId.value, 1, 1000); 
     const list = data.records || data || [];
     chaptersList.value = list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   } catch (err) {

@@ -72,6 +72,17 @@ export class ChapterService {
   }
 
   /**
+   * 获取书籍已发布章节列表
+   * @param {number} bookId - 书籍ID
+   * @param {number} [page=1] - 页码
+   * @param {number} [size=10] - 每页大小
+   * @returns {Promise<Object>} 已发布章节列表分页数据
+   */
+  static async getPublishedChaptersByBookId(bookId, page = 1, size = 10) {
+    return await httpClient.get(`/api/chapters/book/${bookId}/published`, { page, size })
+  }
+
+  /**
    * 发布章节
    * @param {number} chapterId - 章节ID
    * @returns {Promise<boolean>} 发布结果
@@ -115,5 +126,14 @@ export class ChapterService {
    */
   static async restoreChapterVersion(chapterId, versionId) {
     return await httpClient.post(`/api/chapters/${chapterId}/versions/${versionId}/restore`)
+  }
+
+  /**
+   * 获取书籍已发布章节统计信息
+   * @param {number} bookId - 书籍ID
+   * @returns {Promise<Object>} 已发布章节统计（chapterCount, totalWordCount）
+   */
+  static async getPublishedChapterStats(bookId) {
+    return await httpClient.get(`/api/chapters/book/${bookId}/published-stats`)
   }
 }

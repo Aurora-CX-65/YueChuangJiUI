@@ -59,6 +59,15 @@ export class AuthService {
   }
 
   /**
+   * 刷新认证信息
+   * 从数据库获取最新用户信息并重新生成JWT令牌（角色变更后使用）
+   * @returns {Promise<Object>} 新的认证信息
+   */
+  static async refreshAuthInfo() {
+    return await httpClient.post('/api/auth/refresh-auth')
+  }
+
+  /**
    * 发送邮箱验证码
    * @param {Object} sendEmailCodeRequest - 发送验证码请求参数
    * @param {string} sendEmailCodeRequest.email - 邮箱地址
