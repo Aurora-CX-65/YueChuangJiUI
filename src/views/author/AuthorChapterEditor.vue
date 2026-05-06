@@ -37,6 +37,21 @@
         </el-row>
 
         <el-form-item label="章节内容" prop="content">
+          <el-alert
+            title="AI 功能风险提示"
+            type="warning"
+            :closable="false"
+            show-icon
+            class="ai-risk-alert mb-2"
+          >
+            <template #default>
+              <span>
+                AI 创作辅助功能通过第三方 API 调用实现，您输入的文本内容将被发送至第三方服务器进行处理。
+                <strong>请勿在创作内容中包含个人隐私、敏感信息或未公开的商业机密。</strong>
+                使用本功能即表示您已知晓相关数据安全风险并自愿承担。
+              </span>
+            </template>
+          </el-alert>
           <div class="editor-toolbar mb-2">
             <el-button-group>
               <el-button size="small" type="primary" plain @click="handleAiCorrect" :loading="aiLoading">
@@ -102,7 +117,25 @@
       </el-form>
       <template #footer>
         <el-button @click="aiOptionsDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAiContinue" :loading="aiLoading">开始生成</el-button>
+        <el-button type="primary" @click="confirmAndContinue" :loading="aiLoading">开始生成</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- AI 数据安全风险确认对话框 -->
+    <el-dialog v-model="aiRiskDialogVisible" title="数据安全风险提示" width="520px" :close-on-click-modal="false" :close-on-press-escape="false">
+      <div class="ai-risk-content">
+        <el-alert type="warning" :closable="false" show-icon class="mb-3">
+          <template #title>
+            <span>请仔细阅读以下风险提示</span>
+          </template>
+        </el-alert>
+        <p>{{ aiRiskActionType === 'correct' ? 'AI 纠错' : 'AI 续写' }}功能会将您当前的章节内容发送至第三方 API 服务器进行处理。发送的数据可能存在被第三方获取或泄露的风险。</p>
+        <p><strong>请确认您当前内容中不包含个人隐私或敏感信息。</strong></p>
+        <el-checkbox v-model="dontShowAiRisk" class="mt-3">不再提示，我已知晓相关风险</el-checkbox>
+      </div>
+      <template #footer>
+        <el-button @click="cancelAiRisk">取消</el-button>
+        <el-button type="warning" @click="confirmAiRisk">确认并继续</el-button>
       </template>
     </el-dialog>
 
@@ -172,6 +205,12 @@ export default {
     const aiDialogTitle = ref('')
     const aiResult = ref('')
     const aiActionType = ref('') // 'correct' or 'continue'
+
+    const AI_RISK_DISMISSED_KEY = 'ai_risk_dismissed'
+    const aiRiskDialogVisible = ref(false)
+    const aiRiskActionType = ref('')
+    const dontShowAiRisk = ref(false)
+    let aiRiskResolve = null
 
     // 版本控制相关
     const versionDrawerVisible = ref(false)
@@ -403,6 +442,38 @@ export default {
       })
     }
 
+    const showAiRiskConfirm = (actionType) => {
+        return new Promise((resolve) => {
+            if (localStorage.getItem(AI_RISK_DISMISSED_KEY) === 'true') {
+                resolve(true)
+                return
+            }
+            aiRiskActionType.value = actionType
+            dontShowAiRisk.value = false
+            aiRiskDialogVisible.value = true
+            aiRiskResolve = resolve
+        })
+    }
+
+    const confirmAiRisk = () => {
+        if (dontShowAiRisk.value) {
+            localStorage.setItem(AI_RISK_DISMISSED_KEY, 'true')
+        }
+        aiRiskDialogVisible.value = false
+        if (aiRiskResolve) {
+            aiRiskResolve(true)
+            aiRiskResolve = null
+        }
+    }
+
+    const cancelAiRisk = () => {
+        aiRiskDialogVisible.value = false
+        if (aiRiskResolve) {
+            aiRiskResolve(false)
+            aiRiskResolve = null
+        }
+    }
+
     const handleAiCorrect = async () => {
         const text = form.content.replace(/<[^>]+>/g, '').trim()
         if (!text || text.length < 10) {
@@ -410,8 +481,11 @@ export default {
             return
         }
 
+        const confirmed = await showAiRiskConfirm('correct')
+        if (!confirmed) return
+
         aiDialogTitle.value = 'AI 正在纠错...'
-        aiDialogVisible.value = true // 立即显示对话框以展示 loading 动画
+        aiDialogVisible.value = true
         aiLoading.value = true
         
         try {
@@ -449,21 +523,25 @@ export default {
         aiOptionsDialogVisible.value = true
     }
 
-    const handleAiContinue = async () => {
-        // 关闭选项对话框
-        aiOptionsDialogVisible.value = false
-        
+    const confirmAndContinue = async () => {
         const text = form.content.replace(/<[^>]+>/g, '').trim()
         if (!text) {
             ElMessage.warning('请先输入一些内容作为续写的上下文')
             return
         }
-        
-        // 取最后 1000 字作为上下文（增加上下文长度以提升效果）
+
+        const confirmed = await showAiRiskConfirm('continue')
+        if (!confirmed) return
+
+        aiOptionsDialogVisible.value = false
+        handleAiContinue(text)
+    }
+
+    const handleAiContinue = async (text) => {
         const context = text.slice(-1000)
         
         aiDialogTitle.value = 'AI 正在续写...'
-        aiDialogVisible.value = true // 立即显示对话框以展示 loading 动画
+        aiDialogVisible.value = true
         aiLoading.value = true
         
         try {
@@ -520,6 +598,7 @@ export default {
       editorInit,
       handleAiCorrect,
       handleAiContinue,
+      confirmAndContinue,
       aiDialogVisible,
       aiDialogTitle,
       aiResult,
@@ -527,6 +606,11 @@ export default {
       aiOptions,
       openAiOptionsDialog,
       applyAiResult,
+      aiRiskDialogVisible,
+      aiRiskActionType,
+      dontShowAiRisk,
+      confirmAiRisk,
+      cancelAiRisk,
       versionDrawerVisible,
       versionsLoading,
       versions,
@@ -638,5 +722,19 @@ export default {
   margin: 0 0 8px 0;
   color: #909399;
   font-size: 12px;
+}
+
+.ai-risk-alert {
+  border-radius: 4px;
+}
+.ai-risk-alert :deep(.el-alert__description) {
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.ai-risk-content p {
+  margin: 8px 0;
+  line-height: 1.6;
+  color: #606266;
 }
 </style>

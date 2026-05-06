@@ -183,22 +183,35 @@ export class ResponseInterceptors {
    */
   static async statusCheckInterceptor(response) {
     if (!response.ok) {
-      // 创建错误对象
-      const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
-      error.status = response.status
-      error.response = response
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+      let errorCode = response.status
+      let errorData = null
 
-      // 尝试解析错误响应体
+      // 尝试解析错误响应体，提取后端业务错误信息
       try {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
-          error.data = await response.clone().json()
+          errorData = await response.clone().json()
+          // 如果是后端统一的 Result 格式，提取业务错误码和错误信息
+          if (errorData && typeof errorData === 'object' && 'code' in errorData) {
+            errorCode = errorData.code
+            errorMessage = errorData.message || errorMessage
+          }
         } else {
-          error.data = await response.clone().text()
+          errorData = await response.clone().text()
+          if (errorData) {
+            errorMessage = errorData
+          }
         }
       } catch (parseError) {
         console.warn('解析错误响应失败:', parseError)
       }
+
+      const error = new Error(errorMessage)
+      error.status = response.status
+      error.code = errorCode
+      error.response = response
+      error.data = errorData
 
       throw error
     }

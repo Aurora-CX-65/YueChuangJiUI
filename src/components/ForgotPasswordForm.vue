@@ -18,41 +18,91 @@
     <div class="form-content">
       <!-- 步骤1: 输入邮箱 -->
       <div v-if="currentStep === 1" class="step-form">
-        <el-form 
-          ref="emailFormRef"
-          :model="formData" 
-          :rules="emailRules"
-          label-width="120px"
-          @submit.prevent="sendVerificationCode"
-        >
-          <el-form-item label="邮箱" prop="email">
-            <el-input
-              v-model="formData.email"
-              type="email"
-              placeholder="请输入您的邮箱"
-              :prefix-icon="Message"
-              clearable
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-button 
-              type="primary"
-              :loading="loading"
-              :disabled="!formData.email"
-              @click="sendVerificationCode"
-              class="send-code-btn"
-              style="width: 100%;"
+        <el-tabs v-model="emailInputMode" class="email-mode-tabs">
+          <el-tab-pane label="直接输入邮箱" name="direct">
+            <el-form 
+              ref="emailFormRef"
+              :model="formData" 
+              :rules="emailRules"
+              label-width="120px"
+              @submit.prevent="sendVerificationCode"
             >
-              {{ loading ? '发送中...' : '发送验证码' }}
-            </el-button>
-          </el-form-item>
-        </el-form>
+              <el-form-item label="邮箱" prop="email">
+                <el-input
+                  v-model="formData.email"
+                  type="email"
+                  placeholder="请输入您的邮箱"
+                  :prefix-icon="Message"
+                  clearable
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button 
+                  type="primary"
+                  :loading="loading"
+                  :disabled="!formData.email"
+                  @click="sendVerificationCode"
+                  class="send-code-btn"
+                  style="width: 100%;"
+                >
+                  {{ loading ? '发送中...' : '发送验证码' }}
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane label="通过用户名找回" name="username">
+            <el-form 
+              ref="usernameFormRef"
+              :model="usernameFormData" 
+              :rules="usernameRules"
+              label-width="120px"
+            >
+              <el-form-item label="用户名" prop="username">
+                <el-input
+                  v-model="usernameFormData.username"
+                  placeholder="请输入您的用户名"
+                  :prefix-icon="UserIcon"
+                  clearable
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button 
+                  type="primary"
+                  :loading="usernameLoading"
+                  :disabled="!usernameFormData.username"
+                  @click="findEmailByUsername"
+                  class="send-code-btn"
+                  style="width: 100%;"
+                >
+                  {{ usernameLoading ? '查找中...' : '查找绑定邮箱' }}
+                </el-button>
+              </el-form-item>
+            </el-form>
+            <div v-if="foundEmail" class="found-email-section">
+              <el-alert
+                :title="`已找到绑定邮箱：${maskedFoundEmail}`"
+                type="success"
+                :closable="false"
+                show-icon
+                class="info-alert"
+              />
+              <el-button 
+                type="primary"
+                :loading="loading"
+                @click="useFoundEmail"
+                style="width: 100%; margin-top: 12px;"
+              >
+                使用此邮箱发送验证码
+              </el-button>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
 
       <!-- 步骤2: 验证邮箱验证码 -->
       <div v-if="currentStep === 2" class="step-form">
         <el-alert
-          :title="`验证码已发送至 ${formData.email}，请查收邮件并输入验证码`"
+          :title="`验证码已发送至 ${maskedEmail}，请查收邮件并输入验证码`"
           type="info"
           :closable="false"
           show-icon
@@ -180,9 +230,9 @@
 </template>
 
 <script>
-import { ref, reactive, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { Message, Lock, Key } from '@element-plus/icons-vue'
+import { Message, Lock, Key, User as UserIcon } from '@element-plus/icons-vue'
 import { AuthService } from '@/services/auth-service.js'
 import { notificationManager } from '@/utils/notification-manager.js'
 
@@ -201,6 +251,25 @@ export default {
     const loading = ref(false)
     const resendCountdown = ref(0)
     const resendTimer = ref(null)
+    const emailInputMode = ref('direct')
+    const usernameLoading = ref(false)
+    const foundEmail = ref('')
+    const usernameFormRef = ref(null)
+    
+    const maskEmail = (email) => {
+      if (!email || typeof email !== 'string') return ''
+      const atIndex = email.indexOf('@')
+      if (atIndex <= 0) return email
+      const localPart = email.substring(0, atIndex)
+      const domainPart = email.substring(atIndex)
+      if (localPart.length <= 2) {
+        return localPart[0] + '***' + domainPart
+      }
+      return localPart.substring(0, 2) + '***' + domainPart
+    }
+    
+    const maskedEmail = computed(() => maskEmail(formData.email))
+    const maskedFoundEmail = computed(() => maskEmail(foundEmail.value))
     
     // 步骤配置
     const steps = [
@@ -217,11 +286,22 @@ export default {
       confirmPassword: ''
     })
     
+    const usernameFormData = reactive({
+      username: ''
+    })
+    
     // Element Plus 验证规则
     const emailRules = reactive({
       email: [
         { required: true, message: '请输入邮箱地址', trigger: 'blur' },
         { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+      ]
+    })
+    
+    const usernameRules = reactive({
+      username: [
+        { required: true, message: '请输入用户名', trigger: 'blur' },
+        { min: 2, max: 50, message: '用户名长度在 2 到 50 个字符', trigger: 'blur' }
       ]
     })
     
@@ -262,6 +342,48 @@ export default {
       }
     })
     
+    // 步骤1: 通过用户名查找绑定邮箱
+    const findEmailByUsername = async () => {
+      if (!usernameFormRef.value) return
+      
+      const valid = await usernameFormRef.value.validate().catch(() => false)
+      if (!valid) return
+      
+      usernameLoading.value = true
+      foundEmail.value = ''
+      try {
+        const email = await AuthService.findEmailByUsername(usernameFormData.username)
+        foundEmail.value = email
+        notificationManager.success('已找到绑定邮箱')
+      } catch (error) {
+        notificationManager.error(error.message || '未找到该用户名对应的用户')
+      } finally {
+        usernameLoading.value = false
+      }
+    }
+
+    // 使用查找到的邮箱发送验证码
+    const useFoundEmail = async () => {
+      if (!foundEmail.value) return
+      
+      formData.email = foundEmail.value
+      loading.value = true
+      try {
+        await AuthService.sendEmailCode({
+          email: formData.email,
+          type: 'reset'
+        })
+        
+        notificationManager.success('验证码已发送到您的邮箱，请查收')
+        currentStep.value = 2
+        startResendCountdown()
+      } catch (error) {
+        notificationManager.error(error.message || '发送验证码失败，请重试')
+      } finally {
+        loading.value = false
+      }
+    }
+
     // 步骤1: 发送验证码
     const sendVerificationCode = async () => {
       if (!emailFormRef.value) return
@@ -382,19 +504,29 @@ export default {
       emailFormRef,
       codeFormRef,
       passwordFormRef,
+      usernameFormRef,
       // 状态
       currentStep,
       loading,
       resendCountdown,
       steps,
+      emailInputMode,
+      usernameLoading,
+      foundEmail,
+      maskedEmail,
+      maskedFoundEmail,
       // 表单数据和规则
       formData,
+      usernameFormData,
       emailRules,
+      usernameRules,
       codeRules,
       passwordRules,
       errors,
       // 方法
       sendVerificationCode,
+      findEmailByUsername,
+      useFoundEmail,
       verifyCode,
       resetPassword,
       resendCode,
@@ -403,7 +535,8 @@ export default {
       // 图标
       Message,
       Lock,
-      Key
+      Key,
+      UserIcon
     }
   }
 }
@@ -411,7 +544,7 @@ export default {
 
 <style scoped>
 .forgot-password-container {
-  width: 400px;
+  width: 450px;
   margin: 0 auto;
   padding: 30px;
   background-color: #fff;
@@ -489,5 +622,31 @@ export default {
     margin: 10px;
     padding: 20px;
   }
+}
+
+/* 用户名找回邮箱区域 */
+.found-email-section {
+  margin-top: 16px;
+}
+
+.found-email-section .el-button {
+  width: 100%;
+}
+
+/* Tabs样式 */
+.email-mode-tabs {
+  margin-bottom: 10px;
+}
+
+.email-mode-tabs :deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+.email-mode-tabs :deep(.el-tabs__item) {
+  font-size: 14px;
+}
+
+.info-alert {
+  margin-bottom: 15px;
 }
 </style>

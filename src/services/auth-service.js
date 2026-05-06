@@ -133,4 +133,13 @@ export class AuthService {
   static async checkEmail(email) {
     return await httpClient.get('/api/auth/check-email', { email })
   }
+
+  /**
+   * 根据用户名查找绑定的邮箱
+   * @param {string} username - 用户名
+   * @returns {Promise<string>} 用户绑定的邮箱
+   */
+  static async findEmailByUsername(username) {
+    return await httpClient.get('/api/auth/find-email', { username })
+  }
 }

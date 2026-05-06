@@ -215,7 +215,9 @@ export const useUserStore = defineStore('user', {
           throw new Error('登录响应数据格式错误')
         }
       } catch (error) {
-        this.handleError(error, '登录')
+        console.error('UserStore - 登录失败:', error)
+        this.error = error.message || '登录失败'
+        this.loading = false
         throw error
       }
     },
