@@ -11,7 +11,7 @@ export class ReadingProgressService {
    * @returns {Promise<boolean>}
    */
   static async recordReading(data) {
-    return await httpClient.post('/api/reading-progress/record', data)
+    return await httpClient.post('/api/reading-record/record', data)
   }
 
   /**
@@ -20,7 +20,7 @@ export class ReadingProgressService {
    * @returns {Promise<Object>}
    */
   static async getReadingProgress(bookId) {
-    return await httpClient.get(`/api/reading-progress/${bookId}`)
+    return await httpClient.get(`/api/reading-record/${bookId}`)
   }
 
   /**
@@ -30,7 +30,7 @@ export class ReadingProgressService {
    * @returns {Promise<Array>}
    */
   static async getReadingHistory(page = 1, size = 10) {
-    return await httpClient.get('/api/reading-progress/summary', { page, size })
+    return await httpClient.get('/api/reading-record/summary', { page, size })
   }
 
   /**
@@ -38,7 +38,7 @@ export class ReadingProgressService {
    * @returns {Promise<Object>}
    */
   static async getReadingStatistics() {
-    return await httpClient.get('/api/reading-progress/statistics')
+    return await httpClient.get('/api/reading-record/statistics')
   }
 
   /**
@@ -47,6 +47,6 @@ export class ReadingProgressService {
    * @returns {Promise<boolean>}
    */
   static async deleteReadingProgress(bookId) {
-    return await httpClient.delete(`/api/reading-progress/${bookId}`)
+    return await httpClient.delete(`/api/reading-record/${bookId}`)
   }
 }
