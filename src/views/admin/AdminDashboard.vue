@@ -59,6 +59,40 @@
       </div>
     </el-card>
 
+    <!-- 数据可视化图表 -->
+    <el-row :gutter="16" class="charts-row">
+      <el-col :xs="24" :md="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>待审核分布</span>
+            </div>
+          </template>
+          <PieChart
+            title=""
+            :seriesData="pendingPieData"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :md="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>内容统计</span>
+            </div>
+          </template>
+          <BarChart
+            title=""
+            :xAxisData="['用户', '书籍', '章节', '评论']"
+            :seriesData="contentBarData"
+            seriesName="数量"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="16" class="lists-row">
       <el-col :xs="24" :md="12">
         <el-card shadow="never">
@@ -115,8 +149,13 @@
 
 <script>
 import { AdminService } from '@/services/admin-service.js'
+import { PieChart, BarChart } from '@/components/charts'
 export default {
   name: 'AdminDashboard',
+  components: {
+    PieChart,
+    BarChart
+  },
   data() {
     return {
       loading: false,
@@ -148,6 +187,22 @@ export default {
     },
     typeStats() {
       return (this.reviewStats && this.reviewStats.typeStats) || {}
+    },
+    pendingPieData() {
+      return [
+        { name: '书籍', value: this.typeStats.bookCount || 0 },
+        { name: '章节', value: this.typeStats.chapterCount || 0 },
+        { name: '评论', value: this.typeStats.commentCount || 0 },
+        { name: '作者申请', value: this.typeStats.authorApplicationCount || 0 }
+      ]
+    },
+    contentBarData() {
+      return [
+        this.userStats.totalUsers || 0,
+        this.contentStats.totalBooks || 0,
+        this.contentStats.totalChapters || 0,
+        this.contentStats.totalComments || 0
+      ]
     },
     formattedUptime() {
       if (!this.startAtMs) return '—'

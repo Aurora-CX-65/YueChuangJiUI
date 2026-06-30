@@ -43,6 +43,40 @@
       </el-col>
     </el-row>
 
+    <!-- 数据可视化图表 -->
+    <el-row :gutter="20" class="mt-4">
+      <el-col :span="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>待审核分布</span>
+            </div>
+          </template>
+          <PieChart
+            title=""
+            :seriesData="pendingPieData"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>审核工作量</span>
+            </div>
+          </template>
+          <BarChart
+            title=""
+            :xAxisData="['待审核书籍', '待审核章节', '待审核评论', '今日已处理']"
+            :seriesData="workloadBarData"
+            seriesName="数量"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="20" class="mt-4">
       <el-col :span="12">
         <el-card shadow="never" class="h-full">
@@ -87,9 +121,14 @@
 <script>
 import { AdminService } from '@/services/admin-service'
 import { formatDate } from '@/utils/formatters'
+import { PieChart, BarChart } from '@/components/charts'
 
 export default {
   name: 'EditorDashboard',
+  components: {
+    PieChart,
+    BarChart
+  },
   data() {
     return {
       stats: {
@@ -100,6 +139,23 @@ export default {
       },
       pendingBookList: [],
       pendingChapterList: []
+    }
+  },
+  computed: {
+    pendingPieData() {
+      return [
+        { name: '书籍', value: this.stats.pendingBooks || 0 },
+        { name: '章节', value: this.stats.pendingChapters || 0 },
+        { name: '评论', value: this.stats.pendingComments || 0 }
+      ]
+    },
+    workloadBarData() {
+      return [
+        this.stats.pendingBooks || 0,
+        this.stats.pendingChapters || 0,
+        this.stats.pendingComments || 0,
+        this.stats.processedToday || 0
+      ]
     }
   },
   mounted() {

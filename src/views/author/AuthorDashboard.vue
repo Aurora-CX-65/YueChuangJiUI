@@ -33,6 +33,40 @@
       </el-col>
     </el-row>
 
+    <!-- 数据可视化图表 -->
+    <el-row :gutter="20" class="mt-4">
+      <el-col :span="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>作品状态分布</span>
+            </div>
+          </template>
+          <PieChart
+            title=""
+            :seriesData="bookStatusPieData"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>创作数据概览</span>
+            </div>
+          </template>
+          <BarChart
+            title=""
+            :xAxisData="['作品数', '总字数(万)', '收藏数']"
+            :seriesData="creationBarData"
+            seriesName="数量"
+            height="300px"
+          />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="mt-4" shadow="never">
       <template #header>
         <div class="card-header">
@@ -67,9 +101,14 @@ import { useUserStore } from '@/stores/user-store'
 import { useBookStore } from '@/stores/book-store'
 import { UserService } from '@/services/user-service'
 import { formatDate } from '@/utils/formatters'
+import { PieChart, BarChart } from '@/components/charts'
 
 export default {
   name: 'AuthorDashboard',
+  components: {
+    PieChart,
+    BarChart
+  },
   data() {
     return {
       stats: {
@@ -84,6 +123,23 @@ export default {
     const userStore = useUserStore()
     const bookStore = useBookStore()
     return { userStore, bookStore }
+  },
+  computed: {
+    bookStatusPieData() {
+      const statusMap = {}
+      this.recentBooks.forEach(book => {
+        const status = this.getStatusLabel(book.status)
+        statusMap[status] = (statusMap[status] || 0) + 1
+      })
+      return Object.entries(statusMap).map(([name, value]) => ({ name, value }))
+    },
+    creationBarData() {
+      return [
+        this.stats.bookCount || 0,
+        Math.round((this.stats.totalWords || 0) / 10000),
+        this.stats.totalCollections || 0
+      ]
+    }
   },
   mounted() {
     this.init()
